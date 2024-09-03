@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "pm2-runtime dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -27,6 +27,7 @@
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "pino": "^9.3.2",
+    "pm2": "^5.4.2",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "ws": "^8.18.0"
