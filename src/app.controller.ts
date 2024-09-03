@@ -13,6 +13,7 @@ import { handleReceiveOrder } from './handlers/order.handler';
 export class AppController implements OnModuleInit {
   constructor(private config: ConfigService) {}
   private ws: WebSocket;
+  private reconnectInterval = 5000; // Reconnect interval in milliseconds
 
   async onModuleInit() {
     await this.listenToOrderServer();
@@ -60,8 +61,16 @@ export class AppController implements OnModuleInit {
 
     this.ws.on('close', () => {
       console.log('Disconnected from WebSocket');
-      // TODO: Implement reconnection logic
+      this.reconnect();
     });
+  }
+
+  async reconnect() {
+    console.log('Attempting to reconnect...');
+    setTimeout(async () => {
+      this.ws.close();
+      await this.listenToOrderServer();
+    }, this.reconnectInterval);
   }
 
   async handleReceivePing() {
