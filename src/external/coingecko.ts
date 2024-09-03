@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import axios from 'axios';
 
-const BASE_URL = 'https://catalyst-proxy-cc354963a774.herokuapp.com/coingecko';
+const BASE_URL = process.env.COINGECKO_URI;
 
 interface CoinGeckoTokenListItem {
   id: string;
@@ -20,7 +21,6 @@ export const getCoingeckoSupportedTokens = async () => {
       headers: {
         accept: 'application/json',
       },
-      // httpsAgent: proxyAgent,
     });
     return response.data as CoinGeckoTokenListItem[];
   } catch (error) {
