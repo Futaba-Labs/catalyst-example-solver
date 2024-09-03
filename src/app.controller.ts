@@ -21,8 +21,13 @@ export class AppController implements OnModuleInit {
 
   async listenToOrderServer() {
     const wsUri = this.config.getOrThrow('ORDER_SERVER_WS_URI');
+    const apiKey = this.config.getOrThrow('ORDER_SERVER_API_KEY');
     // TODO: Add authentication
-    this.ws = new WebSocket(wsUri);
+    this.ws = new WebSocket(wsUri, {
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
 
     this.ws.on('open', () => {
       console.log('Connected to WebSocket server');
