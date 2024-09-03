@@ -1,0 +1,66 @@
+import { assetMap } from '../external/asset-map';
+import { getCoingeckoPricesByIds } from '../external/coingecko';
+import { CatalystEvent, CatalystQuoteRequestData } from 'src/types';
+import { WebSocket } from 'ws';
+
+const QUOTE_VALID_FOR_MS = 30_000;
+
+export async function handleReceiveQuoteRequest(
+  parsedData: CatalystEvent<CatalystQuoteRequestData>,
+  ws: WebSocket,
+) {
+  console.log('Received quote request:', parsedData);
+  try {
+    const quote = await simulateSolverQuote(
+      parsedData.data.fromAsset,
+      parsedData.data.toAsset,
+      parsedData.data.amount,
+    );
+
+    console.log('quote', quote);
+    ws.send(
+      JSON.stringify({
+        event: 'solver-quote',
+        data: {
+          origin: 'catalyst-solver',
+          quoteRequestId: parsedData.data.quoteRequestId,
+          ...quote,
+        },
+      }),
+    );
+  } catch (error) {
+    console.error('Error simulating quote:', error);
+  }
+}
+
+async function simulateSolverQuote(
+  fromAsset: string,
+  toAsset: string,
+  amount = '1',
+) {
+  const fromAssetId = assetMap[fromAsset].coingecko;
+  const toAssetId = assetMap[toAsset].coingecko;
+
+  const assetPrices = await getCoingeckoPricesByIds(
+    [fromAssetId, toAssetId],
+    'usd',
+  );
+
+  const fromPrice = assetPrices[fromAssetId].usd;
+  const toPrice = assetPrices[toAssetId].usd;
+
+  const conversionRate = toPrice / fromPrice;
+  const conversionAmount = (Number(amount) * fromPrice) / toPrice;
+
+  return {
+    fromAsset,
+    toAsset,
+    fromPrice,
+    toPrice,
+    conversionRate,
+    amount: conversionAmount,
+    expirationTime: new Date().getTime() + QUOTE_VALID_FOR_MS,
+    discount: '',
+    intermediary: 'USD',
+  };
+}
