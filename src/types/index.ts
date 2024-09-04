@@ -75,7 +75,17 @@ export interface CrossChainOrder {
   orderData: DutchOrderData | LimitOrderData;
 }
 
+export interface QuoteContext {
+  toAsset: string;
+  toPrice: string;
+  discount: string;
+  fromAsset: string;
+  fromPrice: string;
+  intermediary: string;
+}
+
 export interface CatalystOrderData {
   orderType: 'LimitOrder' | 'DutchAuction';
   order: CrossChainOrder;
+  quote: QuoteContext;
 }
