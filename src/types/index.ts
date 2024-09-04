@@ -88,4 +88,5 @@ export interface CatalystOrderData {
   orderType: 'LimitOrder' | 'DutchAuction';
   order: CrossChainOrder;
   quote: QuoteContext;
+  signature: string;
 }
