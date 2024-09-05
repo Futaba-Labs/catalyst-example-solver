@@ -27,7 +27,11 @@ interface OutputDescription {
   remoteCall: string;
 }
 
-export interface LimitOrderData {
+interface OrderDataMeta {
+  orderType: 'LimitOrder' | 'DutchAuction';
+}
+
+export interface LimitOrderData extends OrderDataMeta {
   proofDeadline: number;
   challengeDeadline: number;
   collateralToken: string;
@@ -38,7 +42,7 @@ export interface LimitOrderData {
   outputs: OutputDescription[];
 }
 
-export interface DutchOrderData {
+export interface DutchOrderData extends OrderDataMeta {
   verificationContext: string;
   verificationContract: string;
   proofDeadline: number;
@@ -85,7 +89,6 @@ export interface QuoteContext {
 }
 
 export interface CatalystOrderData {
-  orderType: 'LimitOrder' | 'DutchAuction';
   order: CrossChainOrder;
   quote: QuoteContext;
   signature: string;
