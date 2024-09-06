@@ -1,8 +1,9 @@
 import { BridgeOracle__factory } from 'lib/contracts';
 import { OrderKey } from 'src/types/order-key.types';
 import { decodeBitcoinAddress } from './bitcoin/bitcoin-address';
+import { BITCOIN_IDENTIFIER } from './order.initiate';
 
-async function fill_bitcoin(order: OrderKey) {
+async function fillBTC(order: OrderKey) {
   // We only support single BTC fills:
   if (order.outputs.length != 1)
     throw Error(
@@ -19,7 +20,7 @@ async function fill_bitcoin(order: OrderKey) {
   // TODO: make tx to bitcoinRecipientAddress
 }
 
-async function fill_evm(order: OrderKey) {
+async function fillEVM(order: OrderKey) {
   let recordedChain: bigint;
   let remoteOracle: string;
   const outputs = order.outputs;
@@ -47,15 +48,15 @@ async function fill_evm(order: OrderKey) {
   return oracle.fill(outputs, fillTimes);
 }
 
-export async function fill_order_outputs(order: OrderKey) {
+export async function fillOutputs(order: OrderKey) {
   // Define the reactor we will call. You can get the reactor address from the order
   // Check if order outputs are Bitcoin // TODO:
   if (
     order.outputs[0].token.replace('0x', '').slice(0, 64 - 4) ==
-    '000000000000000000000000BC0000000000000000000000000000000000'
+    BITCOIN_IDENTIFIER
   ) {
-    fill_bitcoin(order);
+    fillBTC(order);
   } else {
-    fill_evm(order);
+    fillEVM(order);
   }
 }

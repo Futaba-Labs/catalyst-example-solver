@@ -8,6 +8,10 @@ import {
   CatalystQuoteRequestData,
 } from './types';
 import { handleReceiveOrder } from './handlers/order.handler';
+import { initiateOrder } from './execution/order.initiate';
+import { CrossChainOrder } from './types/cross-chain-order.types';
+import { OrderKey } from './types/order-key.types';
+import { fillOutputs } from './execution/order.fill';
 
 @Controller()
 export class AppController implements OnModuleInit {
@@ -48,7 +52,7 @@ export class AppController implements OnModuleInit {
             );
             break;
           case 'signQuote':
-            handleSignQuote();
+            this.handleSignQuote();
             break;
           case 'order':
             handleReceiveOrder(
@@ -93,5 +97,41 @@ export class AppController implements OnModuleInit {
 
   async handleSignQuote() {}
 
-  async handleReceiveOrder() {}
+  async handleReceiveOrder(
+    parsedData: CatalystEvent<CatalystOrderData>,
+    ws: WebSocket,
+  ) {
+    // TODO: some kind of evaluation of if the price is right.
+    const signature = parsedData.data.signature;
+    // TODO: Correct type casting.
+    const transactionResponse = await initiateOrder(
+      parsedData.data as unknown as CrossChainOrder,
+      signature,
+    );
+
+    const transactionReceipt = await transactionResponse.wait(2);
+
+    // Probably the better way to do this is to look for the initiate events
+    // Check if it was us and then fill. It is simpler to just check if the transaction went through.
+    if (transactionReceipt.status === 0) return;
+
+    // We need the actual orderKey. (The one provided in the call is just an estimate.)
+    const logs = transactionReceipt.logs;
+    // Get the orderInitiated event.
+    let orderKey: OrderKey;
+    for (const log of logs) {
+      if (log.address !== parsedData.data.settlementContractAddress) continue;
+      if (log.topics[0] !== '') continue;
+      orderKey = log.data as any; // TODO: Parse log.data.
+    }
+    if (orderKey === undefined)
+      throw Error(
+        `Tx ${transactionResponse.hash} was initiated and status !== 0, but couldn't find OrderInitiated event in logs`,
+      );
+
+    fillOutputs(orderKey);
+
+    // TODO: remove :)
+    ws.send(`Thanks dude, you may want this: ${transactionResponse.hash}`);
+  }
 }

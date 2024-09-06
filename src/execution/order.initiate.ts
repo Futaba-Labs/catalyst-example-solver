@@ -9,6 +9,8 @@ import { createFillerData } from './order.fillerdata';
 
 export const SOLVER_ADDRESS = '0x1234';
 export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
+export const BITCOIN_IDENTIFIER =
+  '000000000000000000000000BC0000000000000000000000000000000000';
 
 const abi = new AbiCoder();
 
@@ -116,10 +118,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
         throw Error(
           `Unexpected token length ${output.token.length} for ${output.token}`,
         );
-      if (
-        output.token.replace('0x', '').slice(0, 64 - 4) !=
-        '000000000000000000000000BC0000000000000000000000000000000000'
-      )
+      if (output.token.replace('0x', '').slice(0, 64 - 4) != BITCOIN_IDENTIFIER)
         return false;
       const numConfirmations = Number(
         '0x' + output.token.replace('0x', '').slice(64 - 4, 64 - 2),
@@ -141,7 +140,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // Check if we have balance.
   const reactorAddress = order.settlementContract;
 
-  const collateralTkn = ERC20__factory.connect(order.orderData.colalteral);
+  const collateralTkn = ERC20__factory.connect(order.orderData.collateralToken);
   // For collateral.
   if (
     (await collateralTkn.balanceOf(SOLVER_ADDRESS)) <
@@ -156,7 +155,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   return true;
 }
 
-export async function submit_order(order: CrossChainOrder, signature: string) {
+export async function initiateOrder(order: CrossChainOrder, signature: string) {
   // TODO: some kind of order validation, maybe shared with other endpoints? (broadcast order
   if (!(await evaluateOrder(order))) return;
 
