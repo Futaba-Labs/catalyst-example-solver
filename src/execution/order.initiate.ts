@@ -1,85 +1,29 @@
-import { AbiCoder, ethers } from 'ethers';
+import { ethers } from 'ethers';
 import { BaseReactor__factory, ERC20__factory } from 'lib/contracts';
-import {
-  CrossChainOrder,
-  Input,
-  OutputDescription,
-} from 'src/types/cross-chain-order.types';
+import { CrossChainOrder } from 'src/types/cross-chain-order.types';
 import { createFillerData } from './order.fillerdata';
+import { encodeOrderData } from './order.helpers';
 
 export const SOLVER_ADDRESS = '0x1234';
 export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
 export const BITCOIN_IDENTIFIER =
   '000000000000000000000000BC0000000000000000000000000000000000';
 
-const abi = new AbiCoder();
-
 enum OracleType {
   EVM = 'EVM',
   Bitcoin = 'Bitcoin',
 }
 
+// TODO: move this into a config.
+// Chain for address for type
 export const approvedOracles = Map<string, Map<string, OracleType | undefined>>;
-
-const supportedCollateralTokens = Map<string, boolean>;
-
-function flattenInputs(inputs: Input[]) {
-  return inputs.map((input) => [input.token, input.amount]);
-}
-
-function flattenOutputs(outputs: OutputDescription[]) {
-  return outputs.map((output) => [
-    output.remoteOracle,
-    output.token,
-    output.amount,
-    output.recipient,
-    output.chainId,
-    output.remoteCall,
-  ]);
-}
-
-function encodeOrderData(orderData: CrossChainOrder['orderData']): string {
-  if (orderData.type === 'LimitOrder') {
-    return abi.encode(
-      [
-        'tuple(uint32,uint32,address,uint256,uint256,address,tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])',
-      ],
-      [
-        orderData.proofDeadline,
-        orderData.challengeDeadline,
-        orderData.collateralToken,
-        orderData.fillerCollateralAmount,
-        orderData.challengerCollateralAmount,
-        orderData.localOracle,
-        flattenInputs(orderData.inputs),
-        flattenOutputs(orderData.outputs),
-      ],
-    );
-  } else if (orderData.type === 'DutchAuction') {
-    return abi.encode(
-      [
-        'tuple(bytes32,address,uint32,uint32,address,uint256,uint256,address,uint32,int256[],int256[],tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])',
-      ],
-      [
-        orderData.verificationContext,
-        orderData.verificationContract,
-        orderData.proofDeadline,
-        orderData.challengeDeadline,
-        orderData.collateralToken,
-        orderData.fillerCollateralAmount,
-        orderData.challengerCollateralAmount,
-        orderData.localOracle,
-        orderData.slopeStartingTime,
-        orderData.inputSlopes,
-        orderData.outputSlopes,
-        flattenInputs(orderData.inputs),
-        flattenOutputs(orderData.outputs),
-      ],
-    );
-  } else {
-    throw Error(`Order type not implemented ${(orderData as any).type}`);
-  }
-}
+// TODO: Not hardcode
+approvedOracles['84532']['0x3cA2BC13f63759D627449C5FfB0713125c24b019'] =
+  OracleType.Bitcoin;
+const supportedCollateralTokens = Map<string, Map<string, boolean>>;
+supportedCollateralTokens['84532'][
+  '0x0000000000000000000000000000000000000000'
+] = true;
 
 async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // Check reactor address
@@ -102,10 +46,9 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
     // Check remote oracles.
     const remoteOracleType = approvedOracles[remoteOracle][remoteChain];
     if (remoteOracleType === undefined) return false;
-    // Check chain ids:
-    // TODO:
-    // Check VM connections
-    // TODO:
+    // TODO: Check chain ids:
+    // TODO: Check VM connections
+    // TODO: Check timings.
     if (isBitcoin === undefined)
       isBitcoin = remoteOracleType === OracleType.Bitcoin;
     // If one output is Bitcoin then all outputs must be Bitcoin.
@@ -128,7 +71,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
       const addressVersion = Number(
         '0x' + output.token.replace('0x', '').slice(64 - 2, 64),
       );
-      if (addressVersion == 0 || addressVersion > 5) return false;
+      if (addressVersion === 0 || addressVersion > 5) return false;
     } else {
       const outputToken = ERC20__factory.connect(output.token);
       if ((await outputToken.balanceOf(SOLVER_ADDRESS)) < output.amount)
