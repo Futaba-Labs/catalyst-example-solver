@@ -1,24 +1,88 @@
-import { ethers } from 'ethers';
-import { createFillerData } from './order.fillerdata';
+import { AbiCoder, ethers } from 'ethers';
 import { BaseReactor__factory, ERC20__factory } from 'lib/contracts';
-
-type CrossChainOrder = any;
+import {
+  CrossChainOrder,
+  Input,
+  OutputDescription,
+} from 'src/types/cross-chain-order.types';
+import { createFillerData } from './order.fillerdata';
 
 export const SOLVER_ADDRESS = '0x1234';
 export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
+
+const abi = new AbiCoder();
 
 enum OracleType {
   EVM = 'EVM',
   Bitcoin = 'Bitcoin',
 }
+
 export const approvedOracles = Map<string, Map<string, OracleType | undefined>>;
 
 const supportedCollateralTokens = Map<string, boolean>;
 
+function flattenInputs(inputs: Input[]) {
+  return inputs.map((input) => [input.token, input.amount]);
+}
+
+function flattenOutputs(outputs: OutputDescription[]) {
+  return outputs.map((output) => [
+    output.remoteOracle,
+    output.token,
+    output.amount,
+    output.recipient,
+    output.chainId,
+    output.remoteCall,
+  ]);
+}
+
+function encodeOrderData(orderData: CrossChainOrder['orderData']): string {
+  if (orderData.type === 'LimitOrder') {
+    return abi.encode(
+      [
+        'tuple(uint32,uint32,address,uint256,uint256,address,tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])',
+      ],
+      [
+        orderData.proofDeadline,
+        orderData.challengeDeadline,
+        orderData.collateralToken,
+        orderData.fillerCollateralAmount,
+        orderData.challengerCollateralAmount,
+        orderData.localOracle,
+        flattenInputs(orderData.inputs),
+        flattenOutputs(orderData.outputs),
+      ],
+    );
+  } else if (orderData.type === 'DutchAuction') {
+    return abi.encode(
+      [
+        'tuple(bytes32,address,uint32,uint32,address,uint256,uint256,address,uint32,int256[],int256[],tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])',
+      ],
+      [
+        orderData.verificationContext,
+        orderData.verificationContract,
+        orderData.proofDeadline,
+        orderData.challengeDeadline,
+        orderData.collateralToken,
+        orderData.fillerCollateralAmount,
+        orderData.challengerCollateralAmount,
+        orderData.localOracle,
+        orderData.slopeStartingTime,
+        orderData.inputSlopes,
+        orderData.outputSlopes,
+        flattenInputs(orderData.inputs),
+        flattenOutputs(orderData.outputs),
+      ],
+    );
+  } else {
+    throw Error(`Order type not implemented ${(orderData as any).type}`);
+  }
+}
+
 async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // Check reactor address
   // Check if we support the collateral.
-  if (!supportedCollateralTokens[order.orderData.collateral]) return false;
+  if (!supportedCollateralTokens[order.orderData.collateralToken]) return false;
   // Check local oracle.
   const localChain = order.originChainId;
   const localOracle = order.orderData.localOracle;
@@ -28,7 +92,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   let isBitcoin: undefined | true | false = undefined;
   for (const output of order.orderData.outputs) {
     const remoteOracle = output.remoteOracle;
-    const remoteChain = output.chainid;
+    const remoteChain = output.chainId;
     if (remoteChain === localChain) {
       isBitcoin = true;
       if (localOracle !== remoteOracle) return false;
@@ -63,7 +127,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // For collateral.
   if (
     (await collateralTkn.balanceOf(SOLVER_ADDRESS)) <
-    order.orderData.collateralAmount
+    order.orderData.fillerCollateralAmount
   )
     return false;
 
@@ -85,6 +149,10 @@ export async function submit_order(order: CrossChainOrder, signature: string) {
   BaseReactor__factory;
   const reactor = BaseReactor__factory.connect(reactorAddress);
 
+  // Encode the orderdata for delivery.
+  const encodedOrderData = encodeOrderData(order.orderData);
+  const preparedOrder = { ...order, orderData: encodedOrderData };
+
   // Call the reactor to initiate the order.
-  return reactor.initiate(order, signature, fillerData);
+  return reactor.initiate(preparedOrder, signature, fillerData);
 }
