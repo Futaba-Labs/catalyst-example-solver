@@ -90,4 +90,5 @@ export interface CatalystOrderData {
   order: CrossChainOrder;
   quote: QuoteContext;
   signature: string;
+  submitTime: number;
 }
