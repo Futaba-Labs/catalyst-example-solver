@@ -8,10 +8,6 @@ import {
   CatalystQuoteRequestData,
 } from './types';
 import { handleReceiveOrder } from './handlers/order.handler';
-import { initiateOrder } from './execution/order.initiate';
-import { CrossChainOrder } from './types/cross-chain-order.types';
-import { OrderKey } from './types/order-key.types';
-import { fillOutputs } from './execution/order.fill';
 
 @Controller()
 export class AppController implements OnModuleInit {
@@ -55,7 +51,7 @@ export class AppController implements OnModuleInit {
             this.handleSignQuote();
             break;
           case 'order':
-            handleReceiveOrder(
+            this.handleReceiveOrder(
               parsedData as CatalystEvent<CatalystOrderData>,
               this.ws,
             );
@@ -131,7 +127,10 @@ export class AppController implements OnModuleInit {
 
     fillOutputs(orderKey);
 
-    // TODO: remove :)
-    ws.send(`Thanks dude, you may want this: ${transactionResponse.hash}`);
+  async handleReceiveOrder(
+    orderRequest: CatalystEvent<CatalystOrderData>,
+    ws: WebSocket,
+  ) {
+    return handleReceiveOrder(orderRequest.data, ws);
   }
 }

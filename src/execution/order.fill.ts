@@ -1,7 +1,15 @@
 import { BridgeOracle__factory } from 'lib/contracts';
 import { OrderKey } from 'src/types/order-key.types';
-import { decodeBitcoinAddress } from './bitcoin/bitcoin-address';
+import { decodeBitcoinAddress } from './bitcoin/bitcoin.address';
 import { BITCOIN_IDENTIFIER } from './order.initiate';
+import * as bitcoin from 'bitcoinjs-lib';
+
+// TODO: Fix
+const bitcoinWallet: any = '';
+
+async function getInput(amount: bigint): Promise<any> {
+  return;
+}
 
 async function fillBTC(order: OrderKey) {
   // We only support single BTC fills:
@@ -17,11 +25,31 @@ async function fillBTC(order: OrderKey) {
 
   const bitcoinRecipientAddress = decodeBitcoinAddress(version, recipientHash);
   const satoshis = output.amount;
+  console.log({
+    bitcoinRecipientAddress,
+    satoshis,
+  });
+  return;
   // TODO: make tx to bitcoinRecipientAddress
+  const psbt = new bitcoin.Psbt();
+
+  const input = await getInput(satoshis);
+  // TODO: set changeAddress as not bitcoinRecipientAddress.
+  const changeAddress = bitcoinRecipientAddress;
+  const fee = 0;
+  const changeAmount = input.value - Number(satoshis) - fee;
+  psbt.addInput(input);
+  psbt.addOutput({ address: bitcoinRecipientAddress, value: Number(satoshis) });
+  psbt.addOutput({ address: changeAddress, value: changeAmount });
+  psbt.signInput(0, bitcoinWallet);
+  psbt.finalizeAllInputs();
+  // psbt.validateSignaturesOfInput
+  // Broadcast
+  // await psbt.extractTransaction();
 }
 
 async function fillEVM(order: OrderKey) {
-  let recordedChain: bigint;
+  let recordedChain: number;
   let remoteOracle: string;
   const outputs = order.outputs;
   for (const output of order.outputs) {

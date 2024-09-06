@@ -16,9 +16,9 @@ export type Collateral = {
 export type OrderKey = {
      reactorContext: ReactorInfo;
     swapper: string;
-    nonce: bigint;
+    nonce: number;
     collateral: Collateral;
-    originChainId: bigint;
+    originChainId: number;
     localOracle: string;
     inputs: Input[];
     outputs: OutputDescription[];

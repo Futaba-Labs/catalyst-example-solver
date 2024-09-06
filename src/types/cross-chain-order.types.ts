@@ -7,7 +7,7 @@ export type OutputDescription = {
   token: string;
   amount: bigint;
   recipient: string;
-  chainId: bigint;
+  chainId: number;
   remoteCall: string;
 };
 
@@ -15,13 +15,13 @@ export type DutchAuctionData = {
   type: 'DutchAuction'; // Not to be submitted
   verificationContext: string;
   verificationContract: string;
-  proofDeadline: bigint;
-  challengeDeadline: bigint;
+  proofDeadline: number;
+  challengeDeadline: number;
   collateralToken: string;
   fillerCollateralAmount: bigint;
   challengerCollateralAmount: bigint;
   localOracle: string;
-  slopeStartingTime: bigint;
+  slopeStartingTime: number;
   inputSlopes: string[];
   outputSlopes: string[];
   inputs: Input[];
@@ -30,8 +30,8 @@ export type DutchAuctionData = {
 
 export type LimitOrderData = {
   type: 'LimitOrder'; // Not to be submitted
-  proofDeadline: bigint;
-  challengeDeadline: bigint;
+  proofDeadline: number;
+  challengeDeadline: number;
   collateralToken: string;
   fillerCollateralAmount: bigint;
   challengerCollateralAmount: bigint;
@@ -44,9 +44,9 @@ export type LimitOrderData = {
 export type CrossChainOrder = {
   settlementContract: string;
   swapper: string;
-  nonce: string;
-  originChainId: bigint;
-  initiateDeadline: bigint;
-  fillDeadline: bigint;
+  nonce: number;
+  originChainId: number;
+  initiateDeadline: number;
+  fillDeadline: number;
   orderData: DutchAuctionData | LimitOrderData;
 };
