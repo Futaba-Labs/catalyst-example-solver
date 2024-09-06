@@ -47,6 +47,9 @@ export class AppController implements OnModuleInit {
               this.ws,
             );
             break;
+          case 'signQuote':
+            handleSignQuote();
+            break;
           case 'order':
             handleReceiveOrder(
               parsedData as CatalystEvent<CatalystOrderData>,
@@ -85,4 +88,10 @@ export class AppController implements OnModuleInit {
       }),
     );
   }
+
+  async handleReceiveQuoteRequest() {}
+
+  async handleSignQuote() {}
+
+  async handleReceiveOrder() {}
 }

@@ -111,7 +111,25 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
       return false;
     if (localOracleType === OracleType.Bitcoin) {
       // Check that the output has been formatted correctly.
-      // TODO:
+      // Sanity check since we use the slice a lot. Should never trigger.
+      if (output.token.replace('0x', '').length != 64)
+        throw Error(
+          `Unexpected token length ${output.token.length} for ${output.token}`,
+        );
+      if (
+        output.token.replace('0x', '').slice(0, 64 - 4) !=
+        '000000000000000000000000BC0000000000000000000000000000000000'
+      )
+        return false;
+      const numConfirmations = Number(
+        '0x' + output.token.replace('0x', '').slice(64 - 4, 64 - 2),
+      );
+      if (numConfirmations > 3) return false;
+      // TODO: Check if this number of confirmations fits into a 99% proof interval.
+      const addressVersion = Number(
+        '0x' + output.token.replace('0x', '').slice(64 - 2, 64),
+      );
+      if (addressVersion == 0 || addressVersion > 5) return false;
     } else {
       const outputToken = ERC20__factory.connect(output.token);
       if ((await outputToken.balanceOf(SOLVER_ADDRESS)) < output.amount)
