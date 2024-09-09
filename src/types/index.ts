@@ -86,9 +86,14 @@ export interface QuoteContext {
   intermediary: string;
 }
 
+export interface CatalystOrderMeta {
+  submitTime: number;
+  orderIdentifier?: string;
+}
+
 export interface CatalystOrderData {
   order: CrossChainOrder;
   quote: QuoteContext;
   signature: string;
-  submitTime: number;
+  meta: CatalystOrderMeta;
 }
