@@ -31,26 +31,29 @@ export function decodeBitcoinAddress(
     );
     return bs58check.encode(bytes);
   }
-  let prefix = !testnet ? 'bc1' : 'tb1';
+  const prefix = !testnet ? 'bc' : 'tb';
   if (version === AddressType.P2WPKH) {
     const bytes = Buffer.from(
       recipientHash.replace('0x', '').slice(0, 40),
       'hex',
     );
-    prefix += 'q';
-    return bech32.encode(prefix, bech32.toWords(bytes));
+    const words = bech32.toWords(bytes);
+    words.unshift(0x00);
+    return bech32.encode(prefix, words);
   }
   const bytes = Buffer.from(
     recipientHash.replace('0x', '').slice(0, 64),
     'hex',
   );
   if (version === AddressType.P2WSH) {
-    prefix += 'q';
-    return bech32.encode(prefix, bech32.toWords(bytes));
+    const words = bech32.toWords(bytes);
+    words.unshift(0x00);
+    return bech32.encode(prefix, words);
   }
   if (version === AddressType.P2TR) {
-    prefix += 'p';
-    return bech32m.encode(prefix, bech32.toWords(bytes));
+    const words = bech32m.toWords(bytes);
+    words.unshift(0x01);
+    return bech32m.encode(prefix, words);
   }
 
   throw Error(`Unsupported Address Type ${version}`);

@@ -41,7 +41,7 @@ const supportedCollateralTokens = new Map<number, Map<string, boolean>>();
 supportedCollateralTokens.set(84532, new Map<string, boolean>());
 supportedCollateralTokens
   .get(84532)!
-  .set('0x0000000000000000000000000000000000000000', true);
+  .set('0x036CbD53842c5426634e7929541eC2318f3dCF7e'.toLowerCase(), true);
 
 async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // TODO: Check reactor address
@@ -187,21 +187,18 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
 export async function initiateOrder(order: CrossChainOrder, signature: string) {
   // TODO: some kind of order validation, maybe shared with other endpoints? (broadcast order
   const evaluation = await evaluateOrder(order);
-  console.log({ evaluation });
   if (!evaluation) return;
 
   const fillerData = createFillerData(SOLVER_ADDRESS, DEFAULT_UW_INCENTIVE);
 
   // Define the reactor we will call. You can get the reactor address from the order
   const reactorAddress = order.settlementContract;
-  BaseReactor__factory;
+
   const reactor = BaseReactor__factory.connect(reactorAddress, signer);
 
   // Encode the orderdata for delivery.
   const encodedOrderData = encodeOrderData(order.orderData);
   const preparedOrder = { ...order, orderData: encodedOrderData };
-
-  console.log({ preparedOrder, fillerData });
 
   // Call the reactor to initiate the order.
   return reactor.initiate(preparedOrder, signature, fillerData);

@@ -3,6 +3,8 @@ import { CatalystOrderData } from '../types';
 import { WebSocket } from 'ws';
 import { BaseReactor__factory } from 'lib/contracts';
 import { ethers } from 'ethers';
+import { OrderKey } from 'src/types/order-key.types';
+import { fillOutputs } from 'src/execution/order.fill';
 
 export async function handleReceiveOrder(
   orderRequest: CatalystOrderData,
@@ -14,6 +16,7 @@ export async function handleReceiveOrder(
   const order = orderRequest.order;
   // TODO: Correct type casting.
   const transactionResponse = await initiateOrder(order, signature);
+  console.log({ hash: transactionResponse.hash });
 
   const transactionReceipt = await transactionResponse.wait(2);
 
@@ -24,27 +27,29 @@ export async function handleReceiveOrder(
   // We need the actual orderKey. (The one provided in the call is just an estimate.)
   const logs = transactionReceipt.logs;
   // Get the orderInitiated event.
-  let orderKey: ethers.Log;
+  let orderKeyLog: ethers.Log;
   for (const log of logs) {
-    orderKey = log.data as any; // TODO: Parse log.data.
     if (log.address !== order.settlementContract) continue;
     if (
       log.topics[0] !==
       '0x068f390a186ab224f3ad01f21c41b507b6c4e715dcfd2e640ce83b784071eb3f'
     )
       continue;
+    orderKeyLog = log; // TODO: Parse log.data.
   }
-  if (orderKey === undefined)
+  if (orderKeyLog === undefined)
     throw Error(
       `Tx ${transactionResponse.hash} was initiated and status !== 0, but couldn't find OrderInitiated event in logs`,
     );
   const reactorInterface = BaseReactor__factory.createInterface();
-  console.log({ orderKey });
-  const parsedLog = reactorInterface.parseLog(orderKey);
-  console.log({ args: parsedLog.args });
+  const parsedLog = reactorInterface.decodeEventLog(
+    'OrderInitiated',
+    orderKeyLog.data,
+  );
+  const orderKey = parsedLog.orderKey as OrderKey;
 
-  // fillOutputs(orderKey);
+  fillOutputs(orderKey);
 
   // TODO: remove :)
-  ws.send(`Thanks dude, you may want this: ${transactionResponse.hash}`);
+  // ws.send(`Thanks dude, you may want this: ${transactionResponse.hash}`);
 }

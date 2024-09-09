@@ -93,39 +93,37 @@ export class AppController implements OnModuleInit {
 
   async handleSignQuote() {}
 
-  async handleReceiveOrder(
-    parsedData: CatalystEvent<CatalystOrderData>,
-    ws: WebSocket,
-  ) {
-    // TODO: some kind of evaluation of if the price is right.
-    const signature = parsedData.data.signature;
-    // TODO: Correct type casting.
-    const transactionResponse = await initiateOrder(
-      parsedData.data as unknown as CrossChainOrder,
-      signature,
-    );
+  async processOutstandingOrders() {
+    const API_URI = this.config.getOrThrow('ORDER_SERVER_API_URI');
+    const API_KEY = this.config.getOrThrow('ORDER_SERVER_API_KEY');
 
-    const transactionReceipt = await transactionResponse.wait(2);
+    const orderServerResponse = await (
+      await fetch(API_URI + '/orders', {
+        headers: {
+          'x-api-key': API_KEY,
+          Accept: 'application/json',
+        },
+      })
+    ).json();
 
-    // Probably the better way to do this is to look for the initiate events
-    // Check if it was us and then fill. It is simpler to just check if the transaction went through.
-    if (transactionReceipt.status === 0) return;
-
-    // We need the actual orderKey. (The one provided in the call is just an estimate.)
-    const logs = transactionReceipt.logs;
-    // Get the orderInitiated event.
-    let orderKey: OrderKey;
-    for (const log of logs) {
-      if (log.address !== parsedData.data.settlementContractAddress) continue;
-      if (log.topics[0] !== '') continue;
-      orderKey = log.data as any; // TODO: Parse log.data.
+    for (const order of orderServerResponse.data) {
+      console.log(order.orderData);
+      const translatedOrder = {
+        signature: order.signature,
+        order: {
+          settlementContract: order.settlementContractAddress,
+          swapper: order.swapperAddress,
+          nonce: order.nonce,
+          originChainId: order.originChainId,
+          initiateDeadline: order.initiatedDeadline,
+          fillDeadline: order.fillDeadline,
+          orderData: { ...order.orderData },
+        },
+        quote: order.quoteContext,
+      } as CatalystOrderData;
+      handleReceiveOrder(translatedOrder, this.ws);
     }
-    if (orderKey === undefined)
-      throw Error(
-        `Tx ${transactionResponse.hash} was initiated and status !== 0, but couldn't find OrderInitiated event in logs`,
-      );
-
-    fillOutputs(orderKey);
+  }
 
   async handleReceiveOrder(
     orderRequest: CatalystEvent<CatalystOrderData>,
