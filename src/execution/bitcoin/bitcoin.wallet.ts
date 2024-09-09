@@ -8,6 +8,7 @@ import * as ecc from 'tiny-secp256k1';
 const ECPair = ECPairFactory(ecc);
 
 const TESTNET = true;
+const network = TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
 // TODO: Fix
 const {
   bitcoin: { transactions, addresses },
@@ -15,16 +16,16 @@ const {
   hostname: 'mempool.space',
   network: TESTNET ? 'testnet' : undefined,
 });
-const DUST = 500;
+const DUST = 1000n;
 const bitcoinWallet = ECPair.fromWIF(
   '',
   TESTNET ? networks.testnet : networks.bitcoin,
 );
-let { address: bitcoinAddress } = bitcoin.payments.p2wpkh({
+const { output: P2WPKHInputScript } = bitcoin.payments.p2wpkh({
   pubkey: Buffer.from(bitcoinWallet.publicKey),
-  network: TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+  network,
 });
-bitcoinAddress = 'tb1q7v9egtaktp0eqn0ymxhrjl30yefjy3aqn6s6u2';
+const bitcoinAddress = 'tb1q7v9egtaktp0eqn0ymxhrjl30yefjy3aqn6s6u2';
 console.log({ bitcoinAddress });
 
 type AddressTxsUtxo = Awaited<
@@ -40,9 +41,9 @@ function utxoSum(utxos: AddressTxsUtxo[]) {
 }
 
 async function getInput(
-  amount: number,
+  amount: bigint,
   selectedUxtos: AddressTxsUtxo[] = [],
-): Promise<{ inputs: AddressTxsUtxo[]; value: number }> {
+): Promise<{ inputs: AddressTxsUtxo[]; value: bigint }> {
   const candidateUxtos = await addresses.getAddressTxsUtxo({
     address: bitcoinAddress,
   });
@@ -54,20 +55,21 @@ async function getInput(
     return true;
   });
   if (candidateUxtos.length === 0)
-    return { inputs: selectedUxtos, value: utxoSum(selectedUxtos) };
+    return { inputs: selectedUxtos, value: BigInt(utxoSum(selectedUxtos)) };
   // Search inputs for the smallest amount above inputs.
   candidateUxtos.sort((a, b) => a.value - b.value);
   let selectedInput: (typeof candidateUxtos)[0];
   for (selectedInput of candidateUxtos) {
-    if (selectedInput.value > amount) break;
+    if (BigInt(selectedInput.value) > amount) break;
   }
   const selectedInputs = [...selectedUxtos, selectedInput];
-  const valueSum = utxoSum(selectedInputs);
+  const valueSum = BigInt(utxoSum(selectedInputs));
   if (valueSum < amount) return getInput(amount - valueSum, selectedInputs);
   return { inputs: selectedInputs, value: valueSum };
 }
 
 export async function fillBTC(order: OrderKey) {
+  console.log({ order });
   // We only support single BTC fills:
   if (order.outputs.length != 1)
     throw Error(
@@ -75,6 +77,8 @@ export async function fillBTC(order: OrderKey) {
     );
 
   const output = order.outputs[0];
+  if (output.amount <= DUST)
+     throw Error(`Unlikely to broadcast transaction because of dust limit: ${DUST} sats`);
 
   const recipientHash = output.recipient;
   const version = Number('0x' + output.token.slice(output.token.length - 2));
@@ -91,34 +95,34 @@ export async function fillBTC(order: OrderKey) {
   });
   // TODO: make tx to bitcoinRecipientAddress
   const psbt = new bitcoin.Psbt({
-    network: TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+    network,
   });
 
-  const fee = 20 * DUST;
-  const inputs = await getInput(Number(satoshis) + fee);
-  if (inputs.value < Number(satoshis))
+  const fee = 10n * DUST;
+  const inputs = await getInput(satoshis + fee);
+  if (inputs.value < satoshis)
     throw Error(`Could only find ${inputs.value} sats but needs ${satoshis}`);
   // TODO: set changeAddress as not bitcoinRecipientAddress.
-  const changeAmount = inputs.value - Number(satoshis) - fee;
+  const changeAmount = BigInt(inputs.value) - satoshis - fee;
   psbt.addInputs(
     inputs.inputs.map((input) => {
       return {
         hash: input.txid,
         index: input.vout,
         witnessUtxo: {
-          script: Buffer.from(bitcoinWallet.publicKey),
-          value: input.value,
+          script: P2WPKHInputScript,
+          value: Number(input.value),
         },
       };
     }),
   );
   psbt.addOutput({ address: bitcoinRecipientAddress, value: Number(satoshis) });
   if (changeAmount > DUST)
-    psbt.addOutput({ address: bitcoinAddress, value: changeAmount });
-  psbt.signInput(0, bitcoinWallet as any);
+    psbt.addOutput({ address: bitcoinAddress, value: Number(changeAmount) });
+  psbt.signInput(0, bitcoinWallet);
   psbt.finalizeAllInputs();
   // Broadcast
-  console.log({ psbt });
+  console.log({ psbt, tx: psbt.extractTransaction().toHex() });
   const txId = await transactions.postTx({
     txhex: psbt.extractTransaction().toHex(),
   });
