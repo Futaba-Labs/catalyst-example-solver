@@ -89,6 +89,7 @@ export interface QuoteContext {
 export interface CatalystOrderMeta {
   submitTime: number;
   orderIdentifier?: string;
+  orderStatus: string;
 }
 
 export interface CatalystOrderData {
