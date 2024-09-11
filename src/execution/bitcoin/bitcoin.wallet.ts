@@ -1,7 +1,7 @@
 import { OrderKey } from 'src/types/order-key.types';
-import { decodeBitcoinAddress } from '../bitcoin/bitcoin.address';
+import { decodeBitcoinAddress } from './bitcoin.address';
 import * as bitcoin from 'bitcoinjs-lib';
-import mempoolJS from '@mempool/mempool.js';
+import mempoolJS from '@catalabs/mempool.js';
 import ECPairFactory, { networks } from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
 
@@ -14,18 +14,18 @@ const {
   bitcoin: { transactions, addresses },
 } = mempoolJS({
   hostname: 'mempool.space',
-  network: TESTNET ? 'testnet' : undefined,
+  network: TESTNET ? 'testnet4' : undefined,
 });
 const DUST = 1000n;
 const bitcoinWallet = ECPair.fromWIF(
-  '',
+  'cNg39XLiH1UhoAx6xsSrZ7Q1PtEx1kjjRzGfCCEUApUPhfDYoZMp',
   TESTNET ? networks.testnet : networks.bitcoin,
 );
-const { output: P2WPKHInputScript } = bitcoin.payments.p2wpkh({
-  pubkey: Buffer.from(bitcoinWallet.publicKey),
-  network,
-});
-const bitcoinAddress = 'tb1q7v9egtaktp0eqn0ymxhrjl30yefjy3aqn6s6u2';
+const { address: bitcoinAddress, output: P2WPKHInputScript } =
+  bitcoin.payments.p2wpkh({
+    pubkey: Buffer.from(bitcoinWallet.publicKey),
+    network,
+  });
 console.log({ bitcoinAddress });
 
 type AddressTxsUtxo = Awaited<
@@ -78,7 +78,9 @@ export async function fillBTC(order: OrderKey) {
 
   const output = order.outputs[0];
   if (output.amount <= DUST)
-     throw Error(`Unlikely to broadcast transaction because of dust limit: ${DUST} sats`);
+    throw Error(
+      `Unlikely to broadcast transaction because of dust limit: ${DUST} sats`,
+    );
 
   const recipientHash = output.recipient;
   const version = Number('0x' + output.token.slice(output.token.length - 2));
@@ -117,6 +119,16 @@ export async function fillBTC(order: OrderKey) {
     }),
   );
   psbt.addOutput({ address: bitcoinRecipientAddress, value: Number(satoshis) });
+  const op_return_data = output.remoteCall.replace('0x', '');
+  if (op_return_data.length > 0) {
+    const data_embed = bitcoin.payments.embed({
+      data: [Buffer.from(op_return_data, 'hex')],
+    });
+    psbt.addOutput({
+      script: data_embed.output!,
+      value: 0,
+    });
+  }
   if (changeAmount > DUST)
     psbt.addOutput({ address: bitcoinAddress, value: Number(changeAmount) });
   psbt.signInput(0, bitcoinWallet);

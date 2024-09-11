@@ -16,7 +16,7 @@ export async function handleReceiveOrder(
   const order = orderRequest.order;
   // TODO: Correct type casting.
   const transactionResponse = await initiateOrder(order, signature);
-  console.log({ hash: transactionResponse.hash });
+  console.log({ hash: transactionResponse?.hash });
 
   const transactionReceipt = await transactionResponse.wait(2);
 

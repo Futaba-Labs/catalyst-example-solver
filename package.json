@@ -1,4 +1,3 @@
-
 {
   "name": "catalyst-solver",
   "version": "0.0.1",
@@ -22,6 +21,7 @@
     "postinstall": "typechain  --target=ethers-v6 --out-dir lib/contracts 'abi/*.json'"
   },
   "dependencies": {
+    "@catalabs/mempool.js": "^2.3.3",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^10.0.0",
