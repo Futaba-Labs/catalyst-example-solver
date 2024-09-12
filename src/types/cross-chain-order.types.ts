@@ -1,17 +1,17 @@
-export type Input = {
+export interface Input {
   token: string;
   amount: bigint;
-};
-export type OutputDescription = {
+}
+export interface OutputDescription {
   remoteOracle: string;
   token: string;
   amount: bigint;
   recipient: string;
   chainId: number;
   remoteCall: string;
-};
+}
 
-export type DutchAuctionData = {
+export interface DutchAuctionOrderData {
   type: 'DutchAuction'; // Not to be submitted
   verificationContext: string;
   verificationContract: string;
@@ -26,9 +26,9 @@ export type DutchAuctionData = {
   outputSlopes: string[];
   inputs: Input[];
   outputs: OutputDescription[];
-};
+}
 
-export type LimitOrderData = {
+export interface LimitOrderData {
   type: 'LimitOrder'; // Not to be submitted
   proofDeadline: number;
   challengeDeadline: number;
@@ -38,15 +38,15 @@ export type LimitOrderData = {
   localOracle: string;
   inputs: Input[];
   outputs: OutputDescription[];
-};
+}
 
 // With the CrossChainOrder defined as such:
-export type CrossChainOrder = {
+export interface CrossChainOrder {
   settlementContract: string;
   swapper: string;
-  nonce: number;
+  nonce: bigint;
   originChainId: number;
   initiateDeadline: number;
   fillDeadline: number;
-  orderData: DutchAuctionData | LimitOrderData;
-};
+  orderData: DutchAuctionOrderData | LimitOrderData;
+}

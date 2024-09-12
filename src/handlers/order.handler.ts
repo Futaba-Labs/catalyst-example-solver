@@ -1,5 +1,5 @@
 import { initiateOrder } from 'src/execution/order.initiate';
-import { CatalystOrderData } from '../types';
+import { CatalystEvent, CatalystOrderData } from '../types';
 import { WebSocket } from 'ws';
 import { BaseReactor__factory } from 'lib/contracts';
 import { ethers } from 'ethers';
@@ -7,13 +7,14 @@ import { OrderKey } from 'src/types/order-key.types';
 import { fillOutputs } from 'src/execution/order.fill';
 
 export async function handleReceiveOrder(
-  orderRequest: CatalystOrderData,
+  orderRequest: CatalystEvent<CatalystOrderData>,
   ws: WebSocket,
 ) {
-  console.log('Received order:', orderRequest);
+  const data = orderRequest.data;
+  console.log('Received order:', data);
   // TODO: some kind of evaluation of if the price is right.
-  const signature = orderRequest.signature;
-  const order = orderRequest.order;
+  const signature = data.signature;
+  const order = data.order;
   // TODO: Correct type casting.
   const transactionResponse = await initiateOrder(order, signature);
   console.log({ hash: transactionResponse?.hash });
@@ -48,8 +49,16 @@ export async function handleReceiveOrder(
   );
   const orderKey = parsedLog.orderKey as OrderKey;
 
-  fillOutputs(orderKey);
+  await fillOutputs(orderKey);
 
-  // TODO: remove :)
-  // ws.send(`Thanks dude, you may want this: ${transactionResponse.hash}`);
+  ws.send(
+    JSON.stringify({
+      event: 'solver-order-initiated',
+      data: {
+        origin: 'catalyst-solver',
+        nonce: order.nonce.toString(),
+        swapper: order.swapper.toString(),
+      },
+    }),
+  );
 }

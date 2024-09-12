@@ -1,5 +1,3 @@
-import { CrossChainOrder } from './cross-chain-order.types';
-
 export interface CatalystEvent<T> {
   event: string;
   data: T;
@@ -17,39 +15,39 @@ export interface CatalystQuoteRequestData {
 
 interface Input {
   token: string;
-  amount: number;
+  amount: bigint;
 }
 
 interface OutputDescription {
   remoteOracle: string;
   token: string;
-  amount: number;
+  amount: bigint;
   recipient: string;
   chainId: number;
   remoteCall: string;
 }
 
 export interface LimitOrderData {
-  orderType: 'LimitOrder';
+  type: 'LimitOrder';
   proofDeadline: number;
   challengeDeadline: number;
   collateralToken: string;
-  fillerCollateralAmount: number;
-  challengerCollateralAmount: number;
+  fillerCollateralAmount: bigint;
+  challengerCollateralAmount: bigint;
   localOracle: string;
   inputs: Input[];
   outputs: OutputDescription[];
 }
 
-export interface DutchOrderData {
-  orderType: 'DutchAuction';
+export interface DutchAuctionOrderData {
+  type: 'DutchAuction';
   verificationContext: string;
   verificationContract: string;
   proofDeadline: number;
   challengeDeadline: number;
   collateralToken: string;
-  fillerCollateralAmount: number;
-  challengerCollateralAmount: number;
+  fillerCollateralAmount: bigint;
+  challengerCollateralAmount: bigint;
   localOracle: string;
   slopeStartingTime: number;
   inputSlopes: string[];
@@ -62,22 +60,22 @@ export interface DutchOrderData {
 export interface CrossChainOrderEncoded {
   settlementContract: string;
   swapper: string;
-  nonce: string;
+  nonce: bigint;
   originChainId: number;
   initiateDeadline: number;
   fillDeadline: number;
   orderData: string;
 }
 
-// export interface CrossChainOrder {
-//   settlementContract: string;
-//   swapper: string;
-//   nonce: string;
-//   originChainId: number;
-//   initiateDeadline: number;
-//   fillDeadline: number;
-//   orderData: DutchOrderData | LimitOrderData;
-// }
+export interface CrossChainOrder {
+  settlementContract: string;
+  swapper: string;
+  nonce: bigint;
+  originChainId: number;
+  initiateDeadline: number;
+  fillDeadline: number;
+  orderData: DutchAuctionOrderData | LimitOrderData;
+}
 
 export interface QuoteContext {
   toAsset: string;
@@ -101,13 +99,13 @@ export interface CatalystOrderData {
   meta: CatalystOrderMeta;
 }
 
-export type PaginationMeta = {
+export interface PaginationMeta {
   total: number;
   limit: number;
   offset: number;
-};
+}
 
-export type GetOrdersResponse = {
+export interface GetOrdersResponse {
   data: CatalystOrderData[];
   pagination: PaginationMeta;
-};
+}
