@@ -38,7 +38,7 @@ approvedOracles
 approvedOracles
   .get(84532)!
   .set(
-    '0x4A698444A0982d8C954C94eC18C00c8c1Ce10939'.toLowerCase().padEnd(66, '0'),
+    "0x" + '4A698444A0982d8C954C94eC18C00c8c1Ce10939'.toLowerCase().padStart(64, '0'),
     OracleType.Bitcoin,
   );
 approvedOracles
@@ -50,7 +50,7 @@ approvedOracles
 approvedOracles
   .get(84532)!
   .set(
-    '0x3cA2BC13f63759D627449C5FfB0713125c24b019'.toLowerCase().padEnd(66, '0'),
+    "0x" + '3cA2BC13f63759D627449C5FfB0713125c24b019'.toLowerCase().padStart(64, '0'),
     OracleType.Bitcoin,
   );
 
