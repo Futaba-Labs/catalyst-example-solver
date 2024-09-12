@@ -9,6 +9,7 @@ async function bootstrap() {
   app.use(helmet());
 
   const config = app.get<ConfigService>(ConfigService);
+
   const port = config.get('PORT');
 
   await app.listen(port ?? 3333);

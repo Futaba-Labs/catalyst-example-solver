@@ -17,20 +17,30 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "postinstall": "typechain  --target=ethers-v6 --out-dir lib/contracts 'abi/*.json'"
   },
   "dependencies": {
+    "@catalabs/mempool.js": "^2.3.3",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@typechain/ethers-v6": "^0.5.1",
     "axios": "^1.7.7",
+    "bech32": "^2.0.0",
+    "bitcoinjs-lib": "^6.1.6",
+    "bs58check": "^4.0.0",
     "dotenv": "^16.4.5",
+    "ecpair": "^2.1.0",
+    "ethers": "^6.13.2",
     "helmet": "^7.1.0",
     "pino": "^9.3.2",
     "pm2": "^5.4.2",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "tiny-secp256k1": "^2.2.3",
+    "typechain": "^8.3.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {

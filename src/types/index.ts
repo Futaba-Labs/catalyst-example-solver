@@ -1,3 +1,5 @@
+import { CrossChainOrder } from './cross-chain-order.types';
+
 export interface CatalystEvent<T> {
   event: string;
   data: T;
@@ -67,15 +69,15 @@ export interface CrossChainOrderEncoded {
   orderData: string;
 }
 
-export interface CrossChainOrder {
-  settlementContract: string;
-  swapper: string;
-  nonce: string;
-  originChainId: number;
-  initiateDeadline: number;
-  fillDeadline: number;
-  orderData: DutchOrderData | LimitOrderData;
-}
+// export interface CrossChainOrder {
+//   settlementContract: string;
+//   swapper: string;
+//   nonce: string;
+//   originChainId: number;
+//   initiateDeadline: number;
+//   fillDeadline: number;
+//   orderData: DutchOrderData | LimitOrderData;
+// }
 
 export interface QuoteContext {
   toAsset: string;
@@ -98,3 +100,14 @@ export interface CatalystOrderData {
   signature: string;
   meta: CatalystOrderMeta;
 }
+
+export type PaginationMeta = {
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type GetOrdersResponse = {
+  data: CatalystOrderData[];
+  pagination: PaginationMeta;
+};

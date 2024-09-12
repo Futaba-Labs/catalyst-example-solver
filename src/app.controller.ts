@@ -47,8 +47,11 @@ export class AppController implements OnModuleInit {
               this.ws,
             );
             break;
+          case 'signQuote':
+            this.handleSignQuote();
+            break;
           case 'order':
-            handleReceiveOrder(
+            this.handleReceiveOrder(
               parsedData as CatalystEvent<CatalystOrderData>,
               this.ws,
             );
@@ -84,5 +87,48 @@ export class AppController implements OnModuleInit {
         event: 'pong',
       }),
     );
+  }
+
+  async handleReceiveQuoteRequest() {}
+
+  async handleSignQuote() {}
+
+  async processOutstandingOrders() {
+    const API_URI = this.config.getOrThrow('ORDER_SERVER_API_URI');
+    const API_KEY = this.config.getOrThrow('ORDER_SERVER_API_KEY');
+
+    const orderServerResponse = await (
+      await fetch(API_URI + '/orders', {
+        headers: {
+          'x-api-key': API_KEY,
+          Accept: 'application/json',
+        },
+      })
+    ).json();
+
+    for (const order of orderServerResponse.data) {
+      console.log(order.orderData);
+      const translatedOrder = {
+        signature: order.signature,
+        order: {
+          settlementContract: order.settlementContractAddress,
+          swapper: order.swapperAddress,
+          nonce: order.nonce,
+          originChainId: order.originChainId,
+          initiateDeadline: order.initiatedDeadline,
+          fillDeadline: order.fillDeadline,
+          orderData: { ...order.orderData },
+        },
+        quote: order.quoteContext,
+      } as CatalystOrderData;
+      handleReceiveOrder(translatedOrder, this.ws);
+    }
+  }
+
+  async handleReceiveOrder(
+    orderRequest: CatalystEvent<CatalystOrderData>,
+    ws: WebSocket,
+  ) {
+    return handleReceiveOrder(orderRequest.data, ws);
   }
 }
