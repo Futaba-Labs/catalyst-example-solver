@@ -1,10 +1,15 @@
+import 'dotenv/config';
+
 import { ethers } from 'ethers';
 import { BaseReactor__factory, ERC20__factory } from 'lib/contracts';
-import { CrossChainOrder } from 'src/types/cross-chain-order.types';
 import { createFillerData } from './order.fillerdata';
 import { encodeOrderData } from './order.helpers';
+import { CrossChainOrder } from 'src/types/cross-chain-order.types';
 
-export const SOLVER_ADDRESS = '0x1234';
+export const RPC_URL = process.env.RPC_URL;
+export const SOLVER_PK = process.env.SOLVER_PK;
+
+export const SOLVER_ADDRESS = process.env.SOLVER_ADDRESS;
 export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
 export const BITCOIN_IDENTIFIER =
   '000000000000000000000000BC0000000000000000000000000000000000'.toLowerCase();
