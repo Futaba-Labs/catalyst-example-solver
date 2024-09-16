@@ -6,6 +6,8 @@ import { ethers } from 'ethers';
 import { OrderKey } from 'src/types/order-key.types';
 import { fillOutputs } from 'src/execution/order.fill';
 
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function handleReceiveOrder(
   orderRequest: CatalystEvent<CatalystOrderData>,
   ws: WebSocket,
@@ -15,6 +17,10 @@ export async function handleReceiveOrder(
   // TODO: some kind of evaluation of if the price is right.
   const signature = data.signature;
   const order = data.order;
+
+  // Slow down the solver
+  await wait(Number(process.env.SLOWDOWN ?? 0));
+
   // TODO: Correct type casting.
   const transactionResponse = await initiateOrder(order, signature);
   console.log({ hash: transactionResponse?.hash });
