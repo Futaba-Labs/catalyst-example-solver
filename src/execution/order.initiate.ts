@@ -90,6 +90,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
     // TODO: Check chain ids:
     // TODO: Check VM connections
     // TODO: Check timings.
+    // If one output is Bitcoin then all outputs must be Bitcoin.
     isBitcoin = remoteOracleType === OracleType.Bitcoin;
     if (isBitcoin !== (localOracleType === OracleType.Bitcoin)) {
       console.log(`Order Eval: Not Bitcoin Oracle ${chainId}:${remoteOracle}`);
@@ -110,12 +111,15 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
     }
   }
 
+  // Only allow 1 Bitcoin output.
   if (isBitcoin && outputs.length > 1) {
     return false;
   }
 
+  // Check if we have balance.
   const collateralTkn = ERC20__factory.connect(collateralToken, provider);
   // TODO: fixFor collateral.
+  // Check if we support the collateral.
   if (fillerCollateralAmount > 0n) {
     if (
       !supportedCollateralTokens
@@ -135,6 +139,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
       return false;
     }
 
+    // Check if we have set an approval. Set if not.
     if (
       (await collateralTkn.allowance(SOLVER_ADDRESS, settlementContract)) === 0n
     ) {
@@ -146,6 +151,8 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
 }
 
 function validateBitcoinOutput(token: string, remoteCall: string): boolean {
+  // Check that the output has been formatted correctly.
+  // Sanity check since we use the slice a lot. Should never trigger.
   if (token.replace('0x', '').length !== 64) {
     throw Error(`Unexpected token length ${token.length} for ${token}`);
   }
@@ -198,11 +205,14 @@ export async function initiateOrder(order: CrossChainOrder, signature: string) {
   }
 
   const fillerData = createFillerData(SOLVER_ADDRESS, DEFAULT_UW_INCENTIVE);
+  // Define the reactor we will call. You can get the reactor address from the order
   const reactorAddress = order.settlementContract;
   const reactor = BaseReactor__factory.connect(reactorAddress, signer);
 
+  // Encode the orderdata for delivery.
   const encodedOrderData = encodeOrderData(order.orderData);
   const preparedOrder = { ...order, orderData: encodedOrderData };
 
+  // Call the reactor to initiate the order.
   return reactor.initiate(preparedOrder, signature, fillerData);
 }
