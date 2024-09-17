@@ -5,10 +5,10 @@ import { BaseReactor__factory, ERC20__factory } from 'lib/contracts';
 import { createFillerData } from './order.fillerdata';
 import { encodeOrderData } from './order.helpers';
 import { CrossChainOrder } from 'src/types/cross-chain-order.types';
+import { formatRemoteOracleAddress } from 'src/utils';
 
 export const RPC_URL = process.env.RPC_URL;
 export const SOLVER_PK = process.env.SOLVER_PK;
-
 export const SOLVER_ADDRESS = process.env.SOLVER_ADDRESS;
 export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
 export const BITCOIN_IDENTIFIER =
@@ -38,7 +38,7 @@ approvedOracles
 approvedOracles
   .get(84532)!
   .set(
-    "0x" + '4A698444A0982d8C954C94eC18C00c8c1Ce10939'.toLowerCase().padStart(64, '0'),
+    formatRemoteOracleAddress('0x4A698444A0982d8C954C94eC18C00c8c1Ce10939'),
     OracleType.Bitcoin,
   );
 approvedOracles
@@ -50,7 +50,7 @@ approvedOracles
 approvedOracles
   .get(84532)!
   .set(
-    "0x" + '3cA2BC13f63759D627449C5FfB0713125c24b019'.toLowerCase().padStart(64, '0'),
+    formatRemoteOracleAddress('0x3cA2BC13f63759D627449C5FfB0713125c24b019'),
     OracleType.Bitcoin,
   );
 
@@ -63,154 +63,150 @@ supportedCollateralTokens
 async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // TODO: Check reactor address
   // Check local oracle.
-  const localChain = order.originChainId;
-  const localOracle = order.orderData.localOracle;
+  const { originChainId, orderData, settlementContract } = order;
+  const { localOracle, outputs, collateralToken, fillerCollateralAmount } =
+    orderData;
+
   const localOracleType = approvedOracles
-    .get(localChain)
+    .get(originChainId)
     ?.get(localOracle.toLowerCase());
-  if (localOracleType === undefined) {
-    console.log(`Order Eval: Local Oracle ${localChain}:${localOracle}`);
+  if (!localOracleType) {
+    console.log(`Order Eval: Local Oracle ${originChainId}:${localOracle}`);
     return false;
   }
+
   // Check each remote oracle
-  let isBitcoin: undefined | true | false = undefined;
-  for (const output of order.orderData.outputs) {
-    const remoteOracle = output.remoteOracle;
-    const remoteChain = output.chainId;
-    if (remoteChain === localChain) {
-      isBitcoin = true;
-      if (
-        localOracle !== remoteOracle.slice(0, 42) &&
-        remoteOracle.slice(42).replace('0', '').length === 0
-      ) {
-        console.log(
-          `Order Eval: Same chain but different local & remote oracle ${localChain}:${localOracle} != ${remoteOracle}`,
-        );
-        return false;
-      }
-    }
-    // Check remote oracles.
+  let isBitcoin: boolean | undefined;
+  for (const output of outputs) {
+    const { chainId, remoteOracle, token, amount, remoteCall } = output;
     const remoteOracleType = approvedOracles
-      .get(remoteChain)
+      .get(chainId)
       ?.get(remoteOracle.toLowerCase());
-    if (remoteOracleType === undefined) {
-      console.log(`Order Eval: Remote Oracle ${remoteChain}:${remoteOracle}`);
+    if (!remoteOracleType) {
+      console.log(`Order Eval: Remote Oracle ${chainId}:${remoteOracle}`);
       return false;
     }
+
     // TODO: Check chain ids:
     // TODO: Check VM connections
     // TODO: Check timings.
-    if (isBitcoin === undefined)
-      isBitcoin = remoteOracleType === OracleType.Bitcoin;
     // If one output is Bitcoin then all outputs must be Bitcoin.
-    if ((isBitcoin === true) !== (remoteOracleType === OracleType.Bitcoin)) {
-      console.log(
-        `Order Eval: Not Bitcoin Oracle ${remoteChain}:${remoteOracle}`,
-      );
+    isBitcoin = remoteOracleType === OracleType.Bitcoin;
+    if (isBitcoin !== (localOracleType === OracleType.Bitcoin)) {
+      console.log(`Order Eval: Not Bitcoin Oracle ${chainId}:${remoteOracle}`);
       return false;
     }
-    if (localOracleType === OracleType.Bitcoin) {
-      // Check that the output has been formatted correctly.
-      // Sanity check since we use the slice a lot. Should never trigger.
-      if (output.token.replace('0x', '').length != 64)
-        throw Error(
-          `Unexpected token length ${output.token.length} for ${output.token}`,
-        );
-      if (
-        output.token
-          .replace('0x', '')
-          .slice(0, 64 - 4)
-          .toLowerCase() != BITCOIN_IDENTIFIER
-      ) {
-        console.log(`Order Eval: Not Bitcoin Token ${output.token}`);
-        return false;
-      }
-      const numConfirmations = Number(
-        '0x' + output.token.replace('0x', '').slice(64 - 4, 64 - 2),
-      );
-      if (numConfirmations > 3) {
-        console.log(
-          `Order Eval: Not many confirmations required ${output.token}, ${numConfirmations}`,
-        );
-        return false;
-      }
-      // TODO: Check if this number of confirmations fits into a 99% proof interval.
-      const addressVersion = Number(
-        '0x' + output.token.replace('0x', '').slice(64 - 2, 64),
-      );
-      if (addressVersion === 0 || addressVersion > 5) {
-        console.log(
-          `Order Eval: Unsupported Bitcoin Address Version ${output.token}, ${addressVersion}`,
-        );
-        return false;
-      }
-      if (output.remoteCall.replace('0x', '') != '') {
-        console.log(
-          `Order Eval: Bitcoin Remote call not empty ${output.token}, ${output.remoteCall}`,
-        );
+
+    if (isBitcoin) {
+      if (!validateBitcoinOutput(token, remoteCall)) {
         return false;
       }
     } else {
-      const outputToken = ERC20__factory.connect(output.token, provider);
+      const outputToken = ERC20__factory.connect(token, provider);
       const balance = await outputToken.balanceOf(SOLVER_ADDRESS);
-      if (balance < output.amount) {
-        console.log(
-          `Order Eval: Low ERC20 balance ${output.token}, ${balance}`,
-        );
+      if (balance < amount) {
+        console.log(`Order Eval: Low ERC20 balance ${token}, ${balance}`);
         return false;
       }
     }
   }
-  // Only allow 1 Bitcoin output.
-  if (isBitcoin && order.orderData.outputs.length > 1) return false;
-  // Check if we have balance.
-  const reactorAddress = order.settlementContract;
 
-  const collateralTkn = ERC20__factory.connect(
-    order.orderData.collateralToken,
-    provider,
-  );
+  // Only allow 1 Bitcoin output.
+  if (isBitcoin && outputs.length > 1) {
+    return false;
+  }
+
+  // Check if we have balance.
+  const collateralTkn = ERC20__factory.connect(collateralToken, provider);
   // TODO: fixFor collateral.
-  if (order.orderData.fillerCollateralAmount > 0n) {
-    // Check if we support the collateral.
+  // Check if we support the collateral.
+  if (fillerCollateralAmount > 0n) {
     if (
       !supportedCollateralTokens
-        .get(order.originChainId)
-        ?.get(order.orderData.collateralToken.toLowerCase())
+        .get(originChainId)
+        ?.get(collateralToken.toLowerCase())
     ) {
       // TODO: logging
       console.log(
-        `Order Eval: Unsupported Collateral Token ${order.originChainId}:${order.orderData.collateralToken}`,
+        `Order Eval: Unsupported Collateral Token ${originChainId}:${collateralToken}`,
       );
       return false;
     }
+
     if (
-      (await collateralTkn.balanceOf(SOLVER_ADDRESS)) <
-      order.orderData.fillerCollateralAmount
-    )
+      (await collateralTkn.balanceOf(SOLVER_ADDRESS)) < fillerCollateralAmount
+    ) {
       return false;
+    }
 
     // Check if we have set an approval. Set if not.
     if (
-      (await collateralTkn.allowance(SOLVER_ADDRESS, reactorAddress)) === 0n
+      (await collateralTkn.allowance(SOLVER_ADDRESS, settlementContract)) === 0n
     ) {
-      collateralTkn.approve(reactorAddress, ethers.MaxUint256);
+      collateralTkn.approve(settlementContract, ethers.MaxUint256);
     }
-    return true;
+  }
+
+  return true;
+}
+
+function validateBitcoinOutput(token: string, remoteCall: string): boolean {
+  // Check that the output has been formatted correctly.
+  // Sanity check since we use the slice a lot. Should never trigger.
+  if (token.replace('0x', '').length !== 64) {
+    throw Error(`Unexpected token length ${token.length} for ${token}`);
+  }
+
+  if (
+    token
+      .replace('0x', '')
+      .slice(0, 64 - 4)
+      .toLowerCase() !== BITCOIN_IDENTIFIER
+  ) {
+    console.log(`Order Eval: Not Bitcoin Token ${token}`);
+    return false;
+  }
+
+  const numConfirmations = Number(
+    '0x' + token.replace('0x', '').slice(64 - 4, 64 - 2),
+  );
+  if (numConfirmations > 3) {
+    console.log(
+      `Order Eval: Too many confirmations required ${token}, ${numConfirmations}`,
+    );
+    return false;
+  }
+
+  // TODO: Check if this number of confirmations fits into a 99% proof interval.
+  const addressVersion = Number(
+    '0x' + token.replace('0x', '').slice(64 - 2, 64),
+  );
+  if (addressVersion === 0 || addressVersion > 5) {
+    console.log(
+      `Order Eval: Unsupported Bitcoin Address Version ${token}, ${addressVersion}`,
+    );
+    return false;
+  }
+
+  if (remoteCall.replace('0x', '') !== '') {
+    console.log(
+      `Order Eval: Bitcoin Remote call not empty ${token}, ${remoteCall}`,
+    );
+    return false;
   }
   return true;
 }
 
 export async function initiateOrder(order: CrossChainOrder, signature: string) {
   // TODO: some kind of order validation, maybe shared with other endpoints? (broadcast order
-  const evaluation = await evaluateOrder(order);
-  if (!evaluation) return;
+  const isValid = await evaluateOrder(order);
+  if (!isValid) {
+    return;
+  }
 
   const fillerData = createFillerData(SOLVER_ADDRESS, DEFAULT_UW_INCENTIVE);
-
   // Define the reactor we will call. You can get the reactor address from the order
   const reactorAddress = order.settlementContract;
-
   const reactor = BaseReactor__factory.connect(reactorAddress, signer);
 
   // Encode the orderdata for delivery.
