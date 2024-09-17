@@ -61,6 +61,8 @@ supportedCollateralTokens
   .set('0x036CbD53842c5426634e7929541eC2318f3dCF7e'.toLowerCase(), true);
 
 async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
+  // TODO: Check reactor address
+  // Check local oracle.
   const { originChainId, orderData, settlementContract } = order;
   const { localOracle, outputs, collateralToken, fillerCollateralAmount } =
     orderData;
@@ -73,6 +75,7 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
     return false;
   }
 
+  // Check each remote oracle
   let isBitcoin: boolean | undefined;
   for (const output of outputs) {
     const { chainId, remoteOracle, token, amount, remoteCall } = output;
@@ -84,6 +87,9 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
       return false;
     }
 
+    // TODO: Check chain ids:
+    // TODO: Check VM connections
+    // TODO: Check timings.
     isBitcoin = remoteOracleType === OracleType.Bitcoin;
     if (isBitcoin !== (localOracleType === OracleType.Bitcoin)) {
       console.log(`Order Eval: Not Bitcoin Oracle ${chainId}:${remoteOracle}`);
@@ -109,12 +115,14 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   }
 
   const collateralTkn = ERC20__factory.connect(collateralToken, provider);
+  // TODO: fixFor collateral.
   if (fillerCollateralAmount > 0n) {
     if (
       !supportedCollateralTokens
         .get(originChainId)
         ?.get(collateralToken.toLowerCase())
     ) {
+      // TODO: logging
       console.log(
         `Order Eval: Unsupported Collateral Token ${originChainId}:${collateralToken}`,
       );
@@ -162,6 +170,7 @@ function validateBitcoinOutput(token: string, remoteCall: string): boolean {
     return false;
   }
 
+  // TODO: Check if this number of confirmations fits into a 99% proof interval.
   const addressVersion = Number(
     '0x' + token.replace('0x', '').slice(64 - 2, 64),
   );
@@ -182,8 +191,8 @@ function validateBitcoinOutput(token: string, remoteCall: string): boolean {
 }
 
 export async function initiateOrder(order: CrossChainOrder, signature: string) {
+  // TODO: some kind of order validation, maybe shared with other endpoints? (broadcast order
   const isValid = await evaluateOrder(order);
-  console.log('isValid', isValid);
   if (!isValid) {
     return;
   }
