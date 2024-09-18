@@ -14,8 +14,8 @@ export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
 export const BITCOIN_IDENTIFIER =
   '000000000000000000000000BC0000000000000000000000000000000000'.toLowerCase();
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
-const signer = new ethers.Wallet(SOLVER_PK).connect(provider);
+export const provider = new ethers.JsonRpcProvider(RPC_URL);
+export const signer = new ethers.Wallet(SOLVER_PK).connect(provider);
 
 enum OracleType {
   EVM = 'EVM',
