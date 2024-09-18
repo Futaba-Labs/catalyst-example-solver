@@ -68,7 +68,6 @@ export async function handleVmOrder(
     JSON.stringify({
       event: CatalystWsEventType.SOLVER_ORDER_INITIATED,
       data: {
-        origin: 'catalyst-solver',
         nonce: order.nonce.toString(),
         swapper: order.swapper.toString(),
       },

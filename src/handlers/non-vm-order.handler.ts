@@ -139,13 +139,15 @@ export async function handleNonVmOrder(
   const signature = await sdk.signPermitBatchTransferFrom(permit, witness);
 
   ws.send(
-    JSON.stringify({
-      event: CatalystWsEventType.SOLVER_ORDER_SIGNED,
-      data: {
-        origin: 'catalyst-solver',
-        order,
-        signature,
+    JSON.stringify(
+      {
+        event: CatalystWsEventType.SOLVER_ORDER_SIGNED,
+        data: {
+          order,
+          signature,
+        },
       },
-    }),
+      (key, value) => (typeof value === 'bigint' ? value.toString() : value), // return everything else unchanged
+    ),
   );
 }

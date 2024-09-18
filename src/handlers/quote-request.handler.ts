@@ -1,3 +1,4 @@
+import { CatalystWsEventType } from 'src/types/events';
 import { assetMap } from '../external/asset-map';
 import { getCoingeckoPricesByIds } from '../external/coingecko';
 import { CatalystEvent, CatalystQuoteRequestData } from 'src/types';
@@ -9,7 +10,6 @@ export async function handleQuoteRequest(
   parsedData: CatalystEvent<CatalystQuoteRequestData>,
   ws: WebSocket,
 ) {
-  console.log('Received quote request:', parsedData);
   try {
     const quote = await simulateSolverQuote(
       parsedData.data.fromAsset,
@@ -17,12 +17,11 @@ export async function handleQuoteRequest(
       parsedData.data.amount,
     );
 
-    console.log('quote', quote);
+    console.log('Proposed quote', quote);
     ws.send(
       JSON.stringify({
-        event: 'solver-quote',
+        event: CatalystWsEventType.SOLVER_QUOTE,
         data: {
-          origin: 'catalyst-solver',
           quoteRequestId: parsedData.data.quoteRequestId,
           ...quote,
         },
