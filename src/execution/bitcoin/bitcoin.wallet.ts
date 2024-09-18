@@ -21,7 +21,7 @@ const bitcoinWallet = ECPair.fromWIF(
   'cNg39XLiH1UhoAx6xsSrZ7Q1PtEx1kjjRzGfCCEUApUPhfDYoZMp',
   TESTNET ? networks.testnet : networks.bitcoin,
 );
-const { address: bitcoinAddress, output: P2WPKHInputScript } =
+export const { address: bitcoinAddress, output: P2WPKHInputScript } =
   bitcoin.payments.p2wpkh({
     pubkey: Buffer.from(bitcoinWallet.publicKey),
     network,

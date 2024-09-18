@@ -1,11 +1,14 @@
 import { bech32, bech32m } from 'bech32';
 import bs58check from 'bs58check';
 import { AddressType } from 'bitcoin-address-validation';
+import { BTC_TOKEN_ADDRESS_PREFIX } from 'src/common/constants';
 
 export function isFromBTCToEvm(asset: string) {
+  // Check if the first 30 bytes are the bitcoin identifier.
+  // The last 2 bytes signify number of confirmations & address type.
   return (
-    asset.toLowerCase() ===
-    '0x000000000000000000000000bc00000000000000000000000000000000000101'
+    asset.toLowerCase().slice(0, 60+2) ===
+    BTC_TOKEN_ADDRESS_PREFIX.toLowerCase()
   );
 }
 

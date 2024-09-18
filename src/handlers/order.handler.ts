@@ -1,4 +1,4 @@
-import { initiateOrder, provider, signer } from 'src/execution/order.initiate';
+import { evaluateOrder, getOrderTypeFromOracle, initiateOrder, OracleType, provider, signer } from 'src/execution/order.initiate';
 import { CatalystEvent, CatalystOrderData, CrossChainOrder } from '../types';
 import { WebSocket } from 'ws';
 import { BaseReactor__factory } from 'lib/contracts';
@@ -11,7 +11,10 @@ import {
 import { OrderKey } from 'src/types/order-key.types';
 import { fillOutputs } from 'src/execution/order.fill';
 
-import { isFromBTCToEvm } from 'src/utils';
+import { getSwapRecipientFromAddress, isFromBTCToEvm } from 'src/utils';
+import { BTC_TOKEN_ADDRESS_PREFIX } from 'src/common/constants';
+import { bitcoinAddress } from 'src/execution/bitcoin/bitcoin.wallet';
+import { AddressType } from 'bitcoin-address-validation';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -113,9 +116,6 @@ export async function handleSignNonEVMToEVMOrder(
   // but prob should not even be there but in a dedicated service that will monitor the allowances
   // await sdk.increaseAllowance(USDC_ADDRESS, PERMIT2_ADDRESS, ethers.MaxUint256);
 
-  // TODO: run checks on the order fields
-
-  // TODO: if checks not satisifed send a ws error message back to order server to reject the order
 
   // TODO: Limir order only support for now (same for frontend)
   const nonce = BigInt(Math.floor(Math.random() * 10 ** 18));
@@ -125,9 +125,34 @@ export async function handleSignNonEVMToEVMOrder(
   order.nonce = nonce;
   order.swapper = swapper;
 
-  // this is provided from the meta fields
-  // TODO: do we need to verify this with the recipient? How can we derive the bitcoin destination address?
-  // const toAddress = destinationAddress;
+  // TODO: Base on input amount. See UI table.
+  const numConfirmationsRequired = 3;
+
+  // TODO: match these 2 variables.
+  const addressType = AddressType.p2wpkh;
+  const addressTypeIndex = 3;
+
+  const token = BTC_TOKEN_ADDRESS_PREFIX + numConfirmationsRequired.toString(16).padStart(2, "0") + addressTypeIndex.toString(16).padStart(2, "0");
+  // TODO: validate that the below address is indeed the right decoded recipient.
+  const recipient = getSwapRecipientFromAddress(bitcoinAddress, addressType);
+
+  // Fill in the recipient fields in the output.
+  // First, lets ensure that that there is either 0 or 1 output.
+  const outputs = order.orderData.outputs;
+  if (outputs.length != 1) {
+    throw Error(`Multiple outputs found: ${outputs.length}`);
+  }
+  // Select the provided output
+  const output = outputs[0];
+  // Set us as the recipient.
+  outputs[0] = {...output, recipient, token, remoteCall: "0x"};
+
+  // Run checks on the order fields
+  const oracleType = await getOrderTypeFromOracle(order);
+  if (oracleType !== OracleType.Bitcoin) {
+    // TODO: if checks not satisifed send a ws error message back to order server to reject the order
+    throw Error(`Order Falied Validation`);
+  }
 
   const permit: PermitBatchTransferFrom = {
     permitted: [...order.orderData.inputs],

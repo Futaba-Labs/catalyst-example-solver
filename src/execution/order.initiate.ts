@@ -6,6 +6,7 @@ import { createFillerData } from './order.fillerdata';
 import { encodeOrderData } from './order.helpers';
 import { CrossChainOrder } from 'src/types/cross-chain-order.types';
 import { formatRemoteOracleAddress } from 'src/utils';
+import { DUTCH_AUCTION_REACTOR, LIMIT_ORDER_REACTOR } from 'src/common/constants';
 
 export const RPC_URL = process.env.RPC_URL;
 export const SOLVER_PK = process.env.SOLVER_PK;
@@ -17,7 +18,8 @@ export const BITCOIN_IDENTIFIER =
 export const provider = new ethers.JsonRpcProvider(RPC_URL);
 export const signer = new ethers.Wallet(SOLVER_PK).connect(provider);
 
-enum OracleType {
+export enum OracleType {
+  Unsupported = undefined,
   EVM = 'EVM',
   Bitcoin = 'Bitcoin',
 }
@@ -26,9 +28,9 @@ enum OracleType {
 // Chain for address for type
 export const approvedOracles = new Map<
   number,
-  Map<string, OracleType | undefined>
+  Map<string, OracleType>
 >();
-approvedOracles.set(84532, new Map<string, OracleType | undefined>());
+approvedOracles.set(84532, new Map<string, OracleType>());
 approvedOracles
   .get(84532)!
   .set(
@@ -60,12 +62,16 @@ supportedCollateralTokens
   .get(84532)!
   .set('0x036CbD53842c5426634e7929541eC2318f3dCF7e'.toLowerCase(), true);
 
-async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
-  // TODO: Check reactor address
+export async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // Check local oracle.
   const { originChainId, orderData, settlementContract } = order;
-  const { localOracle, outputs, collateralToken, fillerCollateralAmount } =
+  const { localOracle, outputs, type } =
     orderData;
+
+  if (!checkReactor(settlementContract, type)) {
+    console.log(`Order Eval: Reactor ${settlementContract}:${type}`);
+    return false;
+  }
 
   const localOracleType = approvedOracles
     .get(originChainId)
@@ -116,6 +122,65 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
     return false;
   }
 
+  return true;
+}
+
+export function getOrderTypeFromOracle(order: CrossChainOrder): OracleType {
+  const { originChainId, orderData, settlementContract } = order;
+  const { localOracle, outputs, type } =
+    orderData;
+  
+  if (!checkReactor(settlementContract, type)) {
+    console.log(`Order Eval: Reactor ${settlementContract}:${type}`);
+    return OracleType.Unsupported;
+  }
+
+  const localOracleType = approvedOracles
+  .get(originChainId)
+    ?.get(localOracle.toLowerCase());
+  if (!localOracleType) {
+    console.log(`Order Eval: Local Oracle ${originChainId}:${localOracle}`);
+    return OracleType.Unsupported;
+  }
+  
+  // Check each remote oracle
+  let isBitcoin: boolean | undefined;
+  for (const output of outputs) {
+    const { chainId, remoteOracle } = output;
+    const remoteOracleType = approvedOracles
+      .get(chainId)
+      ?.get(remoteOracle.toLowerCase());
+    if (!remoteOracleType) {
+      console.log(`Order Eval: Remote Oracle ${chainId}:${remoteOracle}`);
+      return OracleType.Unsupported;
+    }
+
+    // TODO: Check chain ids:
+    // TODO: Check VM connections
+    // TODO: Check timings.
+    // If one output is Bitcoin then all outputs must be Bitcoin.
+    isBitcoin = remoteOracleType === OracleType.Bitcoin;
+    if (isBitcoin !== (localOracleType === OracleType.Bitcoin)) {
+      console.log(`Order Eval: Not Bitcoin Oracle ${chainId}:${remoteOracle}`);
+      return OracleType.Unsupported;
+    }
+  }
+  return localOracleType;
+}
+
+function checkReactor(reactorAddr: string, reactorType: "LimitOrder" | "DutchAuction"): boolean {
+  if (reactorType === "LimitOrder") {
+    return reactorAddr.toLowerCase() === LIMIT_ORDER_REACTOR.toLowerCase();
+  }
+  if (reactorType === "DutchAuction") {
+    return reactorAddr.toLowerCase() === DUTCH_AUCTION_REACTOR.toLowerCase();
+  }
+  return false;
+}
+
+export async function evaluateCollateral(order: CrossChainOrder): Promise<boolean> {
+  const { originChainId, orderData, settlementContract } = order;
+  const { collateralToken, fillerCollateralAmount } = orderData;
   // Check if we have balance.
   const collateralTkn = ERC20__factory.connect(collateralToken, provider);
   // TODO: fixFor collateral.
@@ -146,7 +211,6 @@ async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
       collateralTkn.approve(settlementContract, ethers.MaxUint256);
     }
   }
-
   return true;
 }
 
@@ -199,10 +263,11 @@ function validateBitcoinOutput(token: string, remoteCall: string): boolean {
 
 export async function initiateOrder(order: CrossChainOrder, signature: string) {
   // TODO: some kind of order validation, maybe shared with other endpoints? (broadcast order
-  const isValid = await evaluateOrder(order);
+  const isValid = (await evaluateOrder(order)) && (await evaluateCollateral(order));
   if (!isValid) {
     return;
   }
+  
 
   const fillerData = createFillerData(SOLVER_ADDRESS, DEFAULT_UW_INCENTIVE);
   // Define the reactor we will call. You can get the reactor address from the order

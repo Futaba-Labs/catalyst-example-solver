@@ -92,8 +92,6 @@ export class AppController implements OnModuleInit {
 
   async handleReceiveQuoteRequest() {}
 
-  async handleSignQuote() {}
-
   // async processOutstandingOrders() {
   //   const API_URI = this.config.getOrThrow('ORDER_SERVER_API_URI');
   //   const API_KEY = this.config.getOrThrow('ORDER_SERVER_API_KEY');
