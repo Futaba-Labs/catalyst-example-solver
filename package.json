@@ -13,7 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "pm2-runtime dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
+    "test": "jest --config jest.json",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -21,6 +21,7 @@
     "postinstall": "typechain  --target=ethers-v6 --out-dir lib/contracts 'abi/*.json'"
   },
   "dependencies": {
+    "@catalabs/catalyst-sdk": "^0.0.227",
     "@catalabs/mempool.js": "^2.3.3",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.3",
@@ -29,6 +30,7 @@
     "@typechain/ethers-v6": "^0.5.1",
     "axios": "^1.7.7",
     "bech32": "^2.0.0",
+    "bitcoin-address-validation": "^2.2.3",
     "bitcoinjs-lib": "^6.1.6",
     "bs58check": "^4.0.0",
     "dotenv": "^16.4.5",
