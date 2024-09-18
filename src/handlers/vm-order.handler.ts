@@ -1,27 +1,33 @@
-import { initiateOrder } from 'src/execution/order.initiate';
-import { CatalystEvent, CatalystOrderData } from '../types';
+import { Log } from 'ethers';
 import { WebSocket } from 'ws';
 import { BaseReactor__factory } from 'lib/contracts';
-import { ethers } from 'ethers';
-import { OrderKey } from 'src/types/order-key.types';
 import { fillOutputs } from 'src/execution/order.fill';
+import { initiateOrder } from 'src/execution/order.initiate';
+import { CatalystEvent, CatalystOrderData } from 'src/types';
+import { CatalystWsEventType } from 'src/types/events';
+import { OrderKey } from 'src/types/order-key.types';
+import { wait } from 'src/utils';
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-export async function handleReceiveOrder(
+export async function handleVmOrder(
   orderRequest: CatalystEvent<CatalystOrderData>,
   ws: WebSocket,
 ) {
-  const data = orderRequest.data;
-  console.log('Received order:', data);
-  // TODO: some kind of evaluation of if the price is right.
-  const signature = data.signature;
-  const order = data.order;
+  const { data } = orderRequest;
+  if (!data) {
+    console.error(`No data in ${orderRequest.event}`);
+    return;
+  }
+  const { order, signature } = data;
 
-  // Slow down the solver
+  if (!order || !signature) {
+    console.error(`No order or signature in ${orderRequest.event}`);
+    return;
+  }
+
   await wait(Number(process.env.SLOWDOWN ?? 0));
 
-  // TODO: Correct type casting.
+  // TODO: some kind of evaluation of if the price is right.
+
   const transactionResponse = await initiateOrder(order, signature);
   console.log({ hash: transactionResponse?.hash });
 
@@ -34,7 +40,7 @@ export async function handleReceiveOrder(
   // We need the actual orderKey. (The one provided in the call is just an estimate.)
   const logs = transactionReceipt.logs;
   // Get the orderInitiated event.
-  let orderKeyLog: ethers.Log;
+  let orderKeyLog: Log;
   for (const log of logs) {
     if (log.address !== order.settlementContract) continue;
     if (
@@ -55,11 +61,12 @@ export async function handleReceiveOrder(
   );
   const orderKey = parsedLog.orderKey as OrderKey;
 
+  // TODO: pass signer
   await fillOutputs(orderKey);
 
   ws.send(
     JSON.stringify({
-      event: 'solver-order-initiated',
+      event: CatalystWsEventType.SOLVER_ORDER_INITIATED,
       data: {
         origin: 'catalyst-solver',
         nonce: order.nonce.toString(),

@@ -90,6 +90,7 @@ export interface CatalystOrderMeta {
   submitTime: number;
   orderIdentifier?: string;
   orderStatus: string;
+  destinationAddress?: string;
 }
 
 export interface CatalystOrderData {

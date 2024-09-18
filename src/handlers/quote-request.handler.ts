@@ -5,7 +5,7 @@ import { WebSocket } from 'ws';
 
 const QUOTE_VALID_FOR_MS = 30_000;
 
-export async function handleReceiveQuoteRequest(
+export async function handleQuoteRequest(
   parsedData: CatalystEvent<CatalystQuoteRequestData>,
   ws: WebSocket,
 ) {

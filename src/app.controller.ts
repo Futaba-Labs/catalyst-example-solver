@@ -1,13 +1,15 @@
 import { Controller, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RawData, WebSocket } from 'ws';
-import { handleReceiveQuoteRequest } from './handlers/quote-request.handler';
+import { handleQuoteRequest } from './handlers/quote-request.handler';
 import {
   CatalystEvent,
   CatalystOrderData,
   CatalystQuoteRequestData,
 } from './types';
-import { handleReceiveOrder } from './handlers/order.handler';
+import { CatalystWsEventType } from './types/events';
+import { handleVmOrder } from './handlers/vm-order.handler';
+import { handleNonVmOrder } from './handlers/non-vm-order.handler';
 
 @Controller()
 export class AppController implements OnModuleInit {
@@ -22,7 +24,7 @@ export class AppController implements OnModuleInit {
   async listenToOrderServer() {
     const wsUri = this.config.getOrThrow('ORDER_SERVER_WS_URI');
     const apiKey = this.config.getOrThrow('ORDER_SERVER_API_KEY');
-    // TODO: Add authentication
+
     this.ws = new WebSocket(wsUri, {
       headers: {
         'x-api-key': apiKey,
@@ -36,23 +38,27 @@ export class AppController implements OnModuleInit {
     this.ws.on('message', (data: RawData) => {
       try {
         const parsedData: CatalystEvent<unknown> = JSON.parse(data.toString());
-        console.log('Received message:', parsedData);
         switch (parsedData.event) {
-          case 'ping':
+          case CatalystWsEventType.PING:
             this.handleReceivePing();
             break;
-          case 'quote-request':
-            handleReceiveQuoteRequest(
+          case CatalystWsEventType.QUOTE_REQUEST:
+            console.log(`[${CatalystWsEventType.QUOTE_REQUEST}]`, parsedData);
+            handleQuoteRequest(
               parsedData as CatalystEvent<CatalystQuoteRequestData>,
               this.ws,
             );
             break;
-          // case 'signQuote':
-          //   this.handleSignQuote();
-          //   break;
-          case 'order':
-            // TODO: should handle only USDC -> BTC orders
-            handleReceiveOrder(
+          case CatalystWsEventType.VM_ORDER:
+            console.log(`[${CatalystWsEventType.VM_ORDER}]`, parsedData);
+            handleVmOrder(
+              parsedData as CatalystEvent<CatalystOrderData>,
+              this.ws,
+            );
+            break;
+          case CatalystWsEventType.NON_VM_ORDER:
+            console.log(`[${CatalystWsEventType.NON_VM_ORDER}]`, parsedData);
+            handleNonVmOrder(
               parsedData as CatalystEvent<CatalystOrderData>,
               this.ws,
             );
@@ -64,13 +70,14 @@ export class AppController implements OnModuleInit {
         console.error('Error parsing JSON:', error);
       }
     });
+
     this.ws.on('error', (error: Error) => {
       console.error('WebSocket error:', error);
     });
 
-    this.ws.on('close', () => {
-      console.log('Disconnected from WebSocket');
-      this.reconnect();
+    this.ws.on('close', async () => {
+      console.error('Disconnected from WebSocket');
+      await this.reconnect();
     });
   }
 
@@ -85,44 +92,8 @@ export class AppController implements OnModuleInit {
   async handleReceivePing() {
     this.ws.send(
       JSON.stringify({
-        event: 'pong',
+        event: CatalystWsEventType.PONG,
       }),
     );
   }
-
-  async handleReceiveQuoteRequest() {}
-
-  async handleSignQuote() {}
-
-  // async processOutstandingOrders() {
-  //   const API_URI = this.config.getOrThrow('ORDER_SERVER_API_URI');
-  //   const API_KEY = this.config.getOrThrow('ORDER_SERVER_API_KEY');
-
-  //   const orderServerResponse = await (
-  //     await fetch(API_URI + '/orders', {
-  //       headers: {
-  //         'x-api-key': API_KEY,
-  //         Accept: 'application/json',
-  //       },
-  //     })
-  //   ).json();
-
-  //   for (const order of orderServerResponse.data) {
-  //     console.log(order.orderData);
-  //     const translatedOrder = {
-  //       signature: order.signature,
-  //       order: {
-  //         settlementContract: order.settlementContractAddress,
-  //         swapper: order.swapperAddress,
-  //         nonce: order.nonce,
-  //         originChainId: order.originChainId,
-  //         initiateDeadline: order.initiatedDeadline,
-  //         fillDeadline: order.fillDeadline,
-  //         orderData: { ...order.orderData },
-  //       },
-  //       quote: order.quoteContext,
-  //     } as CatalystOrderData;
-  //     handleReceiveOrder(translatedOrder, this.ws);
-  //   }
-  // }
 }
