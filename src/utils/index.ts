@@ -3,11 +3,13 @@ import bs58check from 'bs58check';
 import { AddressType } from 'bitcoin-address-validation';
 import { BTC_TOKEN_ADDRESS_PREFIX } from 'src/common/constants';
 
+export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export function isFromBTCToEvm(asset: string) {
   // Check if the first 30 bytes are the bitcoin identifier.
   // The last 2 bytes signify number of confirmations & address type.
   return (
-    asset.toLowerCase().slice(0, 60+2) ===
+    asset.toLowerCase().slice(0, 60 + 2) ===
     BTC_TOKEN_ADDRESS_PREFIX.toLowerCase()
   );
 }
