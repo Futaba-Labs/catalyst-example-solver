@@ -42,6 +42,17 @@ export class AppController implements OnModuleInit {
           case CatalystWsEventType.PING:
             this.handleReceivePing();
             break;
+          case CatalystWsEventType.QUOTE_REQUEST_BINDING:
+            console.log(
+              `[${CatalystWsEventType.QUOTE_REQUEST_BINDING}]`,
+              parsedData,
+            );
+            // replace by a function that generates binding quotes
+            handleQuoteRequest(
+              parsedData as CatalystEvent<CatalystQuoteRequestData>,
+              this.ws,
+            );
+            break;
           case CatalystWsEventType.QUOTE_REQUEST:
             console.log(`[${CatalystWsEventType.QUOTE_REQUEST}]`, parsedData);
             handleQuoteRequest(

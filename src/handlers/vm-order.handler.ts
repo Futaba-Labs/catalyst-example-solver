@@ -61,9 +61,9 @@ export async function handleVmOrder(
   );
   const orderKey = parsedLog.orderKey as OrderKey;
 
-  // TODO: pass signer
   await fillOutputs(orderKey);
 
+  // this is not necessary but recommended
   ws.send(
     JSON.stringify({
       event: CatalystWsEventType.SOLVER_ORDER_INITIATED,

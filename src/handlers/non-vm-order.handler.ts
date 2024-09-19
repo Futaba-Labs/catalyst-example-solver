@@ -15,7 +15,11 @@ import {
 } from 'src/execution/order.initiate';
 import { CatalystEvent, CatalystOrderData } from 'src/types';
 import { CatalystWsEventType } from 'src/types/events';
-import { getBitcoinAddressVersion, getSwapRecipientFromAddress, wait } from 'src/utils';
+import {
+  getBitcoinAddressVersion,
+  getSwapRecipientFromAddress,
+  wait,
+} from 'src/utils';
 
 const sdk = new EvmSDK({
   provider: provider,
@@ -144,6 +148,7 @@ export async function handleNonVmOrder(
 
   const signature = await sdk.signPermitBatchTransferFrom(permit, witness);
 
+  // this is necessary
   ws.send(
     JSON.stringify(
       {
