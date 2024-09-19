@@ -47,7 +47,7 @@ async function getInput(
   const candidateUxtos = await addresses.getAddressTxsUtxo({
     address: bitcoinAddress,
   });
-  // Filer inputs based on observed.
+  // Filer inputs based on the ones already used.
   candidateUxtos.filter((utxo) => {
     for (const sUtxo of selectedUxtos) {
       if (!(utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid)) return false;
@@ -78,7 +78,7 @@ export async function fillBTC(order: OrderKey) {
 
   const output = order.outputs[0];
   if (output.amount <= DUST)
-    throw Error(
+    console.log(
       `Unlikely to broadcast transaction because of dust limit: ${DUST} sats`,
     );
 
@@ -95,17 +95,25 @@ export async function fillBTC(order: OrderKey) {
     bitcoinRecipientAddress,
     satoshis,
   });
-  // TODO: make tx to bitcoinRecipientAddress
+
+  // Start making a Bitcoin transaction.
   const psbt = new bitcoin.Psbt({
     network,
   });
 
-  const fee = 10n * DUST;
+  // TODO: properly configure the fee. This sets all fees to  2000 sats.
+  // It may be waaay too much (or too little). For simple transactions
+  // it may be in the range of 12 sat/vB while for more complex it may be significantly lower.
+  const fee = 2n * DUST;
+  // Find inputs for satoshis (value to fill) + fee (to pay for tx)
   const inputs = await getInput(satoshis + fee);
+
+  // Check if we have enough sats.
   if (inputs.value < satoshis)
     throw Error(`Could only find ${inputs.value} sats but needs ${satoshis}`);
-  // TODO: set changeAddress as not bitcoinRecipientAddress.
+
   const changeAmount = BigInt(inputs.value) - satoshis - fee;
+  // Add all the required inputs.
   psbt.addInputs(
     inputs.inputs.map((input) => {
       return {
@@ -118,7 +126,9 @@ export async function fillBTC(order: OrderKey) {
       };
     }),
   );
+  // Add the solving output.
   psbt.addOutput({ address: bitcoinRecipientAddress, value: Number(satoshis) });
+  // If data is expected, add it as an OP_RETURN
   const op_return_data = output.remoteCall.replace('0x', '');
   if (op_return_data.length > 0) {
     const data_embed = bitcoin.payments.embed({
@@ -129,6 +139,7 @@ export async function fillBTC(order: OrderKey) {
       value: 0,
     });
   }
+  // Refund change to the solver's address.
   if (changeAmount > DUST)
     psbt.addOutput({ address: bitcoinAddress, value: Number(changeAmount) });
   psbt.signInput(0, bitcoinWallet);
