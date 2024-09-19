@@ -15,7 +15,7 @@ import {
 } from 'src/execution/order.initiate';
 import { CatalystEvent, CatalystOrderData } from 'src/types';
 import { CatalystWsEventType } from 'src/types/events';
-import { getSwapRecipientFromAddress, wait } from 'src/utils';
+import { getBitcoinAddressVersion, getSwapRecipientFromAddress, wait } from 'src/utils';
 
 const sdk = new EvmSDK({
   provider: provider,
@@ -52,6 +52,7 @@ export async function handleNonVmOrder(
   // await sdk.increaseAllowance(USDC_ADDRESS, PERMIT2_ADDRESS, ethers.MaxUint256);
 
   // TODO: Limir order only support for now (same for frontend)
+  // TODO: store and map allowances. It is cheaper to use nonces that are right after each other
   const nonce = BigInt(Math.floor(Math.random() * 10 ** 18));
   const swapper = signer.address;
 
@@ -59,12 +60,17 @@ export async function handleNonVmOrder(
   order.nonce = nonce;
   order.swapper = swapper;
 
-  // TODO: Base on input amount. See UI table.
+  // In production this should be configured based on the tx size.
+  // 1 is not secure.
+  // 2 is secure for anything below 1-2 block rewards as I am writing, that is ~$3k-$6k.
+  // 3 is very secure for small transaction (around 3-4 block rewards).
+  // 4 is secure for large transactions 5-6 block rewards.
+  // 5 is secure for all but the largest swaps.
+  // 6 is generally regarded as final.
   const numConfirmationsRequired = 3;
 
-  // TODO: match these 2 variables.
   const addressType = AddressType.p2wpkh;
-  const addressTypeIndex = 3;
+  const addressTypeIndex = getBitcoinAddressVersion(addressType);
 
   const token =
     BTC_TOKEN_ADDRESS_PREFIX +

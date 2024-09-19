@@ -38,6 +38,25 @@ export function getBitcoinAddressVersion(
   }
 }
 
+export function getBitcoinAddressType(
+  addressVersion: 1 | 2 | 3 | 4 | 5,
+): AddressType {
+  switch (addressVersion) {
+    case 1:
+      return AddressType.p2pkh;
+    case 2:
+      return AddressType.p2sh;
+    case 3:
+      return AddressType.p2wpkh;
+    case 4:
+      return AddressType.p2wsh;
+    case 5:
+      return AddressType.p2tr;
+    default:
+      throw new Error(`Unsupported address type: ${addressVersion}`);
+  }
+}
+
 export function getSwapRecipientFromAddress(
   address: string,
   type: AddressType,
