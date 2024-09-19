@@ -1,6 +1,6 @@
 import { BridgeOracle__factory } from 'lib/contracts';
 import { OrderKey } from 'src/types/order-key.types';
-import { BITCOIN_IDENTIFIER } from './order.initiate';
+import { BITCOIN_IDENTIFIER, signer } from './order.initiate';
 import { fillBTC } from './bitcoin/bitcoin.wallet';
 
 async function fillEVM(order: OrderKey) {
@@ -19,7 +19,7 @@ async function fillEVM(order: OrderKey) {
         `Mixed Oracles, seen ${remoteOracle} and ${output.remoteOracle}`,
       );
   }
-  const oracle = BridgeOracle__factory.connect(remoteOracle);
+  const oracle = BridgeOracle__factory.connect(remoteOracle, signer);
 
   // TODO: Set approvals for the oracleAddress for the value of the output.
 
