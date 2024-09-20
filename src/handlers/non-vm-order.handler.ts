@@ -156,6 +156,7 @@ export async function handleNonVmOrder(
         data: {
           order,
           signature,
+          orderIdentifier: orderRequest.data.meta.orderIdentifier,
         },
       },
       (key, value) => (typeof value === 'bigint' ? value.toString() : value), // return everything else unchanged
