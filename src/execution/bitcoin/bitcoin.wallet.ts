@@ -21,7 +21,7 @@ const bitcoinWallet = ECPair.fromWIF(
   'cNg39XLiH1UhoAx6xsSrZ7Q1PtEx1kjjRzGfCCEUApUPhfDYoZMp',
   TESTNET ? networks.testnet : networks.bitcoin,
 );
-export const { address: bitcoinAddress, output: P2WPKHInputScript,  } =
+export const { address: bitcoinAddress, output: P2WPKHInputScript } =
   bitcoin.payments.p2wpkh({
     pubkey: Buffer.from(bitcoinWallet.publicKey),
     network,
@@ -44,27 +44,26 @@ async function getInput(
   amount: bigint,
   selectedUxtos: AddressTxsUtxo[] = [],
 ): Promise<{ inputs: AddressTxsUtxo[]; value: bigint }> {
-  const candidateUxtos = await addresses.getAddressTxsUtxo({
+  let candidateUxtos = await addresses.getAddressTxsUtxo({
     address: bitcoinAddress,
   });
   // Filer inputs based on the ones already used.
-  candidateUxtos.filter((utxo) => {
+  candidateUxtos = candidateUxtos.filter((utxo) => {
     for (const sUtxo of selectedUxtos) {
-      if (!(utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid)) return false;
+      if (utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid) return false;
     }
     return true;
   });
   if (candidateUxtos.length === 0)
     return { inputs: selectedUxtos, value: BigInt(utxoSum(selectedUxtos)) };
   // Search inputs for the smallest amount above inputs.
-  candidateUxtos.sort((a, b) => a.value - b.value);
   let selectedInput: (typeof candidateUxtos)[0];
   for (selectedInput of candidateUxtos) {
     if (BigInt(selectedInput.value) > amount) break;
   }
   const selectedInputs = [...selectedUxtos, selectedInput];
   const valueSum = BigInt(utxoSum(selectedInputs));
-  if (valueSum < amount) return getInput(amount - valueSum, selectedInputs);
+  if (valueSum < amount) return getInput(amount, selectedInputs);
   return { inputs: selectedInputs, value: valueSum };
 }
 
@@ -142,7 +141,9 @@ export async function fillBTC(order: OrderKey) {
   // Refund change to the solver's address.
   if (changeAmount > DUST)
     psbt.addOutput({ address: bitcoinAddress, value: Number(changeAmount) });
-  psbt.signInput(0, bitcoinWallet);
+  for (let i = 0; i < inputs.inputs.length; ++i) {
+    psbt.signInput(i, bitcoinWallet);
+  }
   psbt.finalizeAllInputs();
   // Broadcast
   console.log({ psbt, tx: psbt.extractTransaction().toHex() });
