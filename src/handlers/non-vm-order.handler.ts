@@ -71,7 +71,7 @@ export async function handleNonVmOrder(
   // 4 is secure for large transactions 5-6 block rewards.
   // 5 is secure for all but the largest swaps.
   // 6 is generally regarded as final.
-  const numConfirmationsRequired = 3;
+  const numConfirmationsRequired = 1;
 
   const addressType = AddressType.p2wpkh;
   const addressTypeIndex = getBitcoinAddressVersion(addressType);
