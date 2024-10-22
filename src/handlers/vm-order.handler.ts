@@ -7,6 +7,7 @@ import { CatalystEvent, CatalystOrderData } from 'src/types';
 import { CatalystWsEventType } from 'src/types/events';
 import { OrderKey } from 'src/types/order-key.types';
 import { wait } from 'src/utils';
+import { provider } from 'src/common/signer';
 
 export async function handleVmOrder(
   orderRequest: CatalystEvent<CatalystOrderData>,
@@ -31,7 +32,11 @@ export async function handleVmOrder(
   const transactionResponse = await initiateOrder(order, signature);
   console.log({ hash: transactionResponse?.hash });
 
-  const transactionReceipt = await transactionResponse.wait(2);
+  // const transactionReceipt = await transactionResponse.wait(2);
+  const transactionReceipt = await provider.waitForTransaction(
+    transactionResponse.hash,
+    2,
+  );
 
   // Probably the better way to do this is to look for the initiate events
   // Check if it was us and then fill. It is simpler to just check if the transaction went through.

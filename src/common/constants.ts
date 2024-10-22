@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 export const DUTCH_AUCTION_REACTOR =
   '0x5f4278626cfa6efFFf052AB710E306823FCC02c3';
 
@@ -11,3 +13,29 @@ export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 export const BTC_TOKEN_ADDRESS_PREFIX =
   '0x000000000000000000000000BC0000000000000000000000000000000000';
+
+export const BITCOIN_IDENTIFIER =
+  '000000000000000000000000BC0000000000000000000000000000000000'.toLowerCase();
+
+export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
+
+export const SOLVER_ADDRESS = process.env.SOLVER_ADDRESS;
+if (!SOLVER_ADDRESS) {
+  throw new Error('SOLVER_ADDRESS is not defined');
+}
+
+export const RPC_URL = process.env.RPC_URL;
+if (!RPC_URL) {
+  throw new Error('RPC_URL is not defined');
+}
+export const SOLVER_PK = process.env.SOLVER_PK;
+if (!SOLVER_PK) {
+  throw new Error('SOLVER_PK is not defined');
+}
+
+export const OZ_RELAYER_API_KEY = process.env.OZ_RELAYER_API_KEY;
+export const OZ_RELAYER_API_SECRET = process.env.OZ_RELAYER_API_SECRET;
+
+if (!OZ_RELAYER_API_KEY || !OZ_RELAYER_API_SECRET) {
+  throw new Error('Missing OZ_RELAYER_API_KEY or OZ_RELAYER_API_SECRET');
+}
