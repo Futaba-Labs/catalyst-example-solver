@@ -10,8 +10,6 @@ import { bitcoinAddress } from 'src/execution/bitcoin/bitcoin.wallet';
 import {
   getOrderTypeFromOracle,
   OracleType,
-  provider,
-  signer,
 } from 'src/execution/order.initiate';
 import { CatalystEvent, CatalystOrderData } from 'src/types';
 import { CatalystWsEventType } from 'src/types/events';
@@ -20,6 +18,7 @@ import {
   getSwapRecipientFromAddress,
   wait,
 } from 'src/utils';
+import { provider, signer } from 'src/common/signer';
 
 const sdk = new EvmSDK({
   provider: provider,

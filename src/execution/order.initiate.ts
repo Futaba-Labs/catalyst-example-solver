@@ -7,19 +7,13 @@ import { encodeOrderData } from './order.helpers';
 import { CrossChainOrder } from 'src/types/cross-chain-order.types';
 import { formatRemoteOracleAddress } from 'src/utils';
 import {
+  BITCOIN_IDENTIFIER,
+  DEFAULT_UW_INCENTIVE,
   DUTCH_AUCTION_REACTOR,
   LIMIT_ORDER_REACTOR,
+  SOLVER_ADDRESS,
 } from 'src/common/constants';
-
-export const RPC_URL = process.env.RPC_URL;
-export const SOLVER_PK = process.env.SOLVER_PK;
-export const SOLVER_ADDRESS = process.env.SOLVER_ADDRESS;
-export const DEFAULT_UW_INCENTIVE = 0.01; // 1%
-export const BITCOIN_IDENTIFIER =
-  '000000000000000000000000BC0000000000000000000000000000000000'.toLowerCase();
-
-export const provider = new ethers.JsonRpcProvider(RPC_URL);
-export const signer = new ethers.Wallet(SOLVER_PK).connect(provider);
+import { relayerSigner } from 'src/common/signer';
 
 export enum OracleType {
   Unsupported = undefined,
@@ -107,7 +101,10 @@ export async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
         return false;
       }
     } else {
-      const outputToken = ERC20__factory.connect(token, provider);
+      const outputToken = ERC20__factory.connect(
+        token,
+        (await relayerSigner) as any,
+      );
       const balance = await outputToken.balanceOf(SOLVER_ADDRESS);
       if (balance < amount) {
         console.log(`Order Eval: Low ERC20 balance ${token}, ${balance}`);
@@ -185,7 +182,10 @@ export async function evaluateCollateral(
   const { originChainId, orderData, settlementContract } = order;
   const { collateralToken, fillerCollateralAmount } = orderData;
   // Check if we have balance.
-  const collateralTkn = ERC20__factory.connect(collateralToken, provider);
+  const collateralTkn = ERC20__factory.connect(
+    collateralToken,
+    (await relayerSigner) as any,
+  );
   // TODO: fixFor collateral.
   // Check if we support the collateral.
   if (fillerCollateralAmount > 0n) {
@@ -275,7 +275,10 @@ export async function initiateOrder(order: CrossChainOrder, signature: string) {
   const fillerData = createFillerData(SOLVER_ADDRESS, DEFAULT_UW_INCENTIVE);
   // Define the reactor we will call. You can get the reactor address from the order
   const reactorAddress = order.settlementContract;
-  const reactor = BaseReactor__factory.connect(reactorAddress, signer);
+  const reactor = BaseReactor__factory.connect(
+    reactorAddress,
+    (await relayerSigner) as any,
+  );
 
   // Encode the orderdata for delivery.
   const encodedOrderData = encodeOrderData(order.orderData);
