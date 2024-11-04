@@ -38,7 +38,7 @@
     "ecpair": "^2.1.0",
     "ethers": "^6.13.2",
     "helmet": "^7.1.0",
-    "p-retry": "^6.2.0",
+    "p-retry": "^4.6.2",
     "pino": "^9.3.2",
     "pm2": "^5.4.2",
     "reflect-metadata": "^0.2.0",
