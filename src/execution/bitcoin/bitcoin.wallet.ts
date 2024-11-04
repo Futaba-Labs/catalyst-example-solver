@@ -4,6 +4,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import mempoolJS from '@catalabs/mempool.js';
 import ECPairFactory, { networks } from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
+import pRetry, { AbortError } from 'p-retry';
 
 const ECPair = ECPairFactory(ecc);
 
@@ -147,9 +148,27 @@ export async function fillBTC(order: OrderKey) {
   psbt.finalizeAllInputs();
   // Broadcast
   console.log({ psbt, tx: psbt.extractTransaction().toHex() });
-  const txId = await transactions.postTx({
-    txhex: psbt.extractTransaction().toHex(),
-  });
+
+  const txId = await pRetry(
+    async () => {
+      const txId = await transactions.postTx({
+        txhex: psbt.extractTransaction().toHex(),
+      });
+      console.log({ txId });
+      return txId;
+    },
+    {
+      retries: 5,
+      minTimeout: 1000,
+      maxTimeout: 5000,
+      factor: 2,
+      onFailedAttempt: (error) => {
+        console.error(
+          `Attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left.`,
+        );
+      },
+    },
+  );
   console.log({ txId });
   return txId;
 }
