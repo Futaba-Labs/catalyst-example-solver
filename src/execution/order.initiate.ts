@@ -49,6 +49,18 @@ approvedOracles
     formatRemoteOracleAddress('0x3cA2BC13f63759D627449C5FfB0713125c24b019'),
     OracleType.Bitcoin,
   );
+  approvedOracles
+  .get(84532)!
+  .set(
+    '0x000000Ee3Edef26AB5B58922406A2C409661fe23'.toLowerCase(),
+    OracleType.Bitcoin,
+  );
+approvedOracles
+  .get(84532)!
+  .set(
+    formatRemoteOracleAddress('0x000000Ee3Edef26AB5B58922406A2C409661fe23'),
+    OracleType.Bitcoin,
+  );
 
 const supportedCollateralTokens = new Map<number, Map<string, boolean>>();
 supportedCollateralTokens.set(84532, new Map<string, boolean>());
