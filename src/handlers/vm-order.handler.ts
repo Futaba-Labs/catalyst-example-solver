@@ -33,6 +33,7 @@ export async function handleVmOrder(
   console.log({ hash: transactionResponse?.hash });
 
   // const transactionReceipt = await transactionResponse.wait(2);
+  // FIXME: hash can be null
   const transactionReceipt = await provider.waitForTransaction(
     transactionResponse.hash,
     2,
