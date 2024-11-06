@@ -3,6 +3,7 @@ import { assetMap } from '../external/asset-map';
 import { getCoingeckoPricesByIds } from '../external/coingecko';
 import { CatalystEvent, CatalystQuoteRequestData } from 'src/types';
 import { WebSocket } from 'ws';
+import { wait } from 'src/utils';
 
 const QUOTE_VALID_FOR_MS = 30_000;
 
@@ -16,6 +17,8 @@ export async function handleQuoteRequest(
       parsedData.data.toAsset,
       parsedData.data.amount,
     );
+
+    await wait(750);
 
     console.log('Proposed quote', quote);
     ws.send(
