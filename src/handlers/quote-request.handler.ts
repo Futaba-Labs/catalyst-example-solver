@@ -60,7 +60,7 @@ async function simulateSolverQuote(
     fromPrice,
     toPrice,
     conversionRate,
-    amount: conversionAmount,
+    amount: conversionAmount*0.8,
     expirationTime: new Date().getTime() + QUOTE_VALID_FOR_MS,
     discount: '',
     intermediary: 'USD',
