@@ -2,23 +2,23 @@ import {
   EvmSDK,
   PermitBatchTransferFrom,
   Witness,
-} from '@catalabs/catalyst-sdk';
-import { WebSocket } from 'ws';
-import { AddressType } from 'bitcoin-address-validation';
-import { BTC_TOKEN_ADDRESS_PREFIX } from 'src/common/constants';
-import { bitcoinAddress } from 'src/execution/bitcoin/bitcoin.wallet';
+} from "@catalabs/catalyst-sdk";
+import { WebSocket } from "ws";
+import { AddressType } from "bitcoin-address-validation";
+import { BTC_TOKEN_ADDRESS_PREFIX } from "src/common/constants";
 import {
   getOrderTypeFromOracle,
   OracleType,
-} from 'src/execution/order.initiate';
-import { CatalystEvent, CatalystOrderData } from 'src/types';
-import { CatalystWsEventType } from 'src/types/events';
+} from "src/execution/order.initiate";
+import { CatalystEvent, CatalystOrderData } from "src/types";
+import { CatalystWsEventType } from "src/types/events";
 import {
   getBitcoinAddressVersion,
   getSwapRecipientFromAddress,
   wait,
-} from 'src/utils';
-import { provider, signer } from 'src/common/signer';
+} from "src/utils";
+import { provider, signer } from "src/common/signer";
+import { bitcoinWallet } from "src/execution/order.fill";
 
 const sdk = new EvmSDK({
   provider: provider,
@@ -63,25 +63,6 @@ export async function handleNonVmOrder(
   order.nonce = nonce;
   order.swapper = swapper;
 
-  // In production this should be configured based on the tx size.
-  // 1 is not secure.
-  // 2 is secure for anything below 1-2 block rewards as I am writing, that is ~$3k-$6k.
-  // 3 is very secure for small transaction (around 3-4 block rewards).
-  // 4 is secure for large transactions 5-6 block rewards.
-  // 5 is secure for all but the largest swaps.
-  // 6 is generally regarded as final.
-  const numConfirmationsRequired = 1;
-
-  const addressType = AddressType.p2wpkh;
-  const addressTypeIndex = getBitcoinAddressVersion(addressType);
-
-  const token =
-    BTC_TOKEN_ADDRESS_PREFIX +
-    numConfirmationsRequired.toString(16).padStart(2, '0') +
-    addressTypeIndex.toString(16).padStart(2, '0');
-  // TODO: validate that the below address is indeed the right decoded recipient.
-  const recipient = getSwapRecipientFromAddress(bitcoinAddress, addressType);
-
   // Fill in the recipient fields in the output.
   // First, lets ensure that that there is either 0 or 1 output.
   const outputs = order.orderData.outputs;
@@ -90,8 +71,29 @@ export async function handleNonVmOrder(
   }
   // Select the provided output
   const output = outputs[0];
+
+  // In production this should be configured based on the tx size.
+  // 1 is not secure.
+  // 2 is secure for anything below 1-2 block rewards as I am writing, that is ~$3k-$6k.
+  // 3 is very secure for small transaction (around 3-4 block rewards).
+  // 4 is secure for large transactions 5-6 block rewards.
+  // 5 is secure for all but the largest swaps.
+  // 6 is generally regarded as final.
+  const numConfirmationsRequired = 2;
+
+  const addressType = AddressType.p2wpkh;
+  const addressTypeIndex = getBitcoinAddressVersion(addressType);
+
+  const token = BTC_TOKEN_ADDRESS_PREFIX +
+    numConfirmationsRequired.toString(16).padStart(2, "0") +
+    addressTypeIndex.toString(16).padStart(2, "0");
+  // TODO: validate that the below address is indeed the right decoded recipient.
+  const bitcoinAddress = await bitcoinWallet.getNextSafeBitcoinAddress(output.amount)
+  console.log({bitcoinAddress});
+  const recipient = getSwapRecipientFromAddress(bitcoinAddress, addressType);
+
   // Set us as the recipient.
-  outputs[0] = { ...output, recipient, token, remoteCall: '0x' };
+  outputs[0] = { ...output, recipient, token, remoteCall: "0x" };
 
   // Run checks on the order fields
   const oracleType = getOrderTypeFromOracle(order);
@@ -108,38 +110,38 @@ export async function handleNonVmOrder(
   };
 
   const witness: Witness = {
-    witnessTypeName: 'CrossChainOrder',
+    witnessTypeName: "CrossChainOrder",
     witnessType: {
       CrossChainOrder: [
-        { name: 'settlementContract', type: 'address' },
-        { name: 'swapper', type: 'address' },
-        { name: 'nonce', type: 'uint256' },
-        { name: 'originChainId', type: 'uint32' },
-        { name: 'initiateDeadline', type: 'uint32' },
-        { name: 'fillDeadline', type: 'uint32' },
-        { name: 'orderData', type: 'CatalystLimitOrderData' },
+        { name: "settlementContract", type: "address" },
+        { name: "swapper", type: "address" },
+        { name: "nonce", type: "uint256" },
+        { name: "originChainId", type: "uint32" },
+        { name: "initiateDeadline", type: "uint32" },
+        { name: "fillDeadline", type: "uint32" },
+        { name: "orderData", type: "CatalystLimitOrderData" },
       ],
       CatalystLimitOrderData: [
-        { name: 'proofDeadline', type: 'uint32' },
-        { name: 'challengeDeadline', type: 'uint32' },
-        { name: 'collateralToken', type: 'address' },
-        { name: 'fillerCollateralAmount', type: 'uint256' },
-        { name: 'challengerCollateralAmount', type: 'uint256' },
-        { name: 'localOracle', type: 'address' },
-        { name: 'inputs', type: 'Input[]' },
-        { name: 'outputs', type: 'OutputDescription[]' },
+        { name: "proofDeadline", type: "uint32" },
+        { name: "challengeDeadline", type: "uint32" },
+        { name: "collateralToken", type: "address" },
+        { name: "fillerCollateralAmount", type: "uint256" },
+        { name: "challengerCollateralAmount", type: "uint256" },
+        { name: "localOracle", type: "address" },
+        { name: "inputs", type: "Input[]" },
+        { name: "outputs", type: "OutputDescription[]" },
       ],
       Input: [
-        { name: 'token', type: 'address' },
-        { name: 'amount', type: 'uint256' },
+        { name: "token", type: "address" },
+        { name: "amount", type: "uint256" },
       ],
       OutputDescription: [
-        { name: 'remoteOracle', type: 'bytes32' },
-        { name: 'token', type: 'bytes32' },
-        { name: 'amount', type: 'uint256' },
-        { name: 'recipient', type: 'bytes32' },
-        { name: 'chainId', type: 'uint32' },
-        { name: 'remoteCall', type: 'bytes' },
+        { name: "remoteOracle", type: "bytes32" },
+        { name: "token", type: "bytes32" },
+        { name: "amount", type: "uint256" },
+        { name: "recipient", type: "bytes32" },
+        { name: "chainId", type: "uint32" },
+        { name: "remoteCall", type: "bytes" },
       ],
     },
     witness: order,
@@ -158,7 +160,7 @@ export async function handleNonVmOrder(
           orderIdentifier: orderRequest.data.meta.orderIdentifier,
         },
       },
-      (key, value) => (typeof value === 'bigint' ? value.toString() : value), // return everything else unchanged
+      (key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
     ),
   );
 }

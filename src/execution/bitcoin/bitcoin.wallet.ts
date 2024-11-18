@@ -1,174 +1,364 @@
-import { OrderKey } from 'src/types/order-key.types';
-import { decodeBitcoinAddress } from './bitcoin.address';
-import * as bitcoin from 'bitcoinjs-lib';
-import mempoolJS from '@catalabs/mempool.js';
-import ECPairFactory, { networks } from 'ecpair';
+// import { solverConfig as config } from "../../../../config/mod.ts";
+import ECPairFactory, { ECPairInterface, networks } from '@catalabs/ecpair';
 import * as ecc from 'tiny-secp256k1';
-import pRetry, { AbortError } from 'p-retry';
+// import { MempoolProvider } from "../../../providers/mempool.ts";
+import { HDKey } from "@scure/bip32";
+import * as bitcoin from 'bitcoinjs-lib';
+import { hexStringToUint8Array } from "./bitcoin.utils";
+import { wait } from "src/utils/index";
+import { MempoolProvider } from './mempool';
 
 const ECPair = ECPairFactory(ecc);
 
-const TESTNET = true;
-const network = TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
-// TODO: Fix
-const {
-  bitcoin: { transactions, addresses },
-} = mempoolJS({
-  hostname: 'mempool.space',
-  network: TESTNET ? 'testnet4' : undefined,
-});
-const DUST = 1000n;
-const bitcoinWallet = ECPair.fromWIF(
-  'cNg39XLiH1UhoAx6xsSrZ7Q1PtEx1kjjRzGfCCEUApUPhfDYoZMp',
-  TESTNET ? networks.testnet : networks.bitcoin,
-);
-export const { address: bitcoinAddress, output: P2WPKHInputScript } =
-  bitcoin.payments.p2wpkh({
-    pubkey: Buffer.from(bitcoinWallet.publicKey),
-    network,
-  });
-console.log({ bitcoinAddress });
+const SECONDS = 1000;
+const MINUTES = 60 * SECONDS;
 
-type AddressTxsUtxo = Awaited<
-  ReturnType<typeof addresses.getAddressTxsUtxo>
->[0];
-
-function utxoSum(utxos: AddressTxsUtxo[]) {
-  let sum = 0;
-  for (const utxo of utxos) {
-    sum += utxo.value;
-  }
-  return sum;
+export interface AddressTxsUtxo {
+    txid: string;
+    vout: number;
+    value: number;
+    spentAt: number;
+    pathIndex: number;
 }
 
-async function getInput(
-  amount: bigint,
-  selectedUxtos: AddressTxsUtxo[] = [],
-): Promise<{ inputs: AddressTxsUtxo[]; value: bigint }> {
-  let candidateUxtos = await addresses.getAddressTxsUtxo({
-    address: bitcoinAddress,
-  });
-  // Filer inputs based on the ones already used.
-  candidateUxtos = candidateUxtos.filter((utxo) => {
-    for (const sUtxo of selectedUxtos) {
-      if (utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid) return false;
+const now = () => Date.parse(new Date().toISOString()) / 1000
+
+export class BitcoinWallet {
+    mempoolProvider: MempoolProvider;
+
+    // Continous services:
+    private GET_COINS_EVERY = 5 * MINUTES; // TODO_QOL: Move into config
+    private UPDATE_BITCOIN_FEE_EVERY = 2 * MINUTES; // TODO_QOL: Move into config
+    private CLEAR_SPENT_COIN_FLAG_AFTER = 10 * MINUTES;
+    private BIP32_XPRIV = "xprvA8YrhEjRG1XDnVEdwh4sfCtddnD9cNhTd46rSWSGk3SNm6Bhe79N3GsgvKoLe3M2JAvWve8FhpN1cLvA1oSxVhBVK6cSKaEo9s6DSigg5XR"
+
+    private MEMPOOL_WAIT_TIME = 500; // TODO_QOL: move into config
+    private MAX_TRIES_FOR_SAFE_ADDRESS = 30000; // TODO_QOL: Move into config.
+    // TODO_QOL: Compute based on fee such that no unspendable outputs are created.
+    BITCOIN_DUST_LIMIT = 1000n; // sats.
+    private hdkey: HDKey;
+
+    mainnet: boolean;
+
+    private satsPerVirtualBytes = 60n;
+    private findCoins;
+
+    private unusedAddressIndex = 0;
+    private emptyAddressIndex = new Map<number, boolean>;
+    coins: AddressTxsUtxo[] = [];
+
+    /** 
+     * Maps addresses to spent amount. Only needs to be valid for the head since we
+     * will rotate non-head addresses forward.
+     */
+    private spendAddress: Map<string, Map<string, boolean>>;
+    private lastHead: string | undefined;
+
+    private getECPairNetwork() {
+        return this.mainnet ? networks.bitcoin : networks.testnet;
     }
-    return true;
-  });
-  if (candidateUxtos.length === 0)
-    return { inputs: selectedUxtos, value: BigInt(utxoSum(selectedUxtos)) };
-  // Search inputs for the smallest amount above inputs.
-  let selectedInput: (typeof candidateUxtos)[0];
-  for (selectedInput of candidateUxtos) {
-    if (BigInt(selectedInput.value) > amount) break;
-  }
-  const selectedInputs = [...selectedUxtos, selectedInput];
-  const valueSum = BigInt(utxoSum(selectedInputs));
-  if (valueSum < amount) return getInput(amount, selectedInputs);
-  return { inputs: selectedInputs, value: valueSum };
-}
 
-export async function fillBTC(order: OrderKey) {
-  console.log({ order });
-  // We only support single BTC fills:
-  if (order.outputs.length != 1)
-    throw Error(
-      `Multiple outputs found in Bitcoin fill. Found: ${order.outputs.length}`,
-    );
+    private getBitcoinJSNetwork() {
+        return this.mainnet ? bitcoin.networks.bitcoin : bitcoin.networks.testnet;
+    }
 
-  const output = order.outputs[0];
-  if (output.amount <= DUST)
-    console.log(
-      `Unlikely to broadcast transaction because of dust limit: ${DUST} sats`,
-    );
+    static utxoSum(utxos: AddressTxsUtxo[]) {
+        let sum = 0;
+        for (const utxo of utxos) {
+          sum += utxo.value;
+        }
+        return sum;
+    }
+      
+    /** If you want to make sure the wallet is ready, await this */
+    public initialization: Promise<void>;
 
-  const recipientHash = output.recipient;
-  const version = Number('0x' + output.token.slice(output.token.length - 2));
+    constructor(mainnet: boolean, findCoins: boolean = true) {
+        this.spendAddress = new Map<string, Map<string, boolean>>;
+        this.mempoolProvider = new MempoolProvider();
+        const rootKey = HDKey.fromJSON({ xpriv: this.BIP32_XPRIV });
+        this.hdkey = rootKey.derive(`m/44'/0'/0'`);
+        this.findCoins = findCoins;
 
-  const bitcoinRecipientAddress = decodeBitcoinAddress(
-    version,
-    recipientHash,
-    TESTNET,
-  );
-  const satoshis = output.amount;
-  console.log({
-    bitcoinRecipientAddress,
-    satoshis,
-  });
+        this.mainnet = mainnet;
 
-  // Start making a Bitcoin transaction.
-  const psbt = new bitcoin.Psbt({
-    network,
-  });
+        this.initialization = this.initialize();
+    }
 
-  // TODO: properly configure the fee. This sets all fees to  2000 sats.
-  // It may be waaay too much (or too little). For simple transactions
-  // it may be in the range of 12 sat/vB while for more complex it may be significantly lower.
-  const fee = 2n * DUST;
-  // Find inputs for satoshis (value to fill) + fee (to pay for tx)
-  const inputs = await getInput(satoshis + fee);
+    /** Sets unusedAddressIndex to the head of the address list. */
+    private async initialize() {
+        console.log(`Initializing Bitcoin wallet with pubKey: ${this.hdkey.publicExtendedKey}`);
+        this.updateLatestFee();
+        await this.getNextSafeBitcoinAddress(0n);
+        if (this.findCoins) {
+            await this.fetchCoins()
+            console.log(this.coins);
+            console.log(`Finished Initializing Bitcoin wallet with pubKey: ${this.hdkey.publicExtendedKey}, containing: ${BitcoinWallet.utxoSum(this.coins)/10**8} Bitcoins`);
 
-  // Check if we have enough sats.
-  if (inputs.value < satoshis)
-    throw Error(`Could only find ${inputs.value} sats but needs ${satoshis}`);
+            setInterval(() => {
+                this.fetchCoins(0);
+            }, this.GET_COINS_EVERY);
+        } else {
+            console.log(`Finished Initializing Bitcoin wallet with pubKey: ${this.hdkey.publicExtendedKey}, coin discovery disabled`);
+        }
+        
+        setInterval(() => {
+            this.updateLatestFee();
+        }, this.UPDATE_BITCOIN_FEE_EVERY);
+    }
 
-  const changeAmount = BigInt(inputs.value) - satoshis - fee;
-  // Add all the required inputs.
-  psbt.addInputs(
-    inputs.inputs.map((input) => {
-      return {
-        hash: input.txid,
-        index: input.vout,
-        witnessUtxo: {
-          script: P2WPKHInputScript,
-          value: Number(input.value),
-        },
-      };
-    }),
-  );
-  // Add the solving output.
-  psbt.addOutput({ address: bitcoinRecipientAddress, value: Number(satoshis) });
-  // If data is expected, add it as an OP_RETURN
-  const op_return_data = output.remoteCall.replace('0x', '');
-  if (op_return_data.length > 0) {
-    const data_embed = bitcoin.payments.embed({
-      data: [Buffer.from(op_return_data, 'hex')],
-    });
-    psbt.addOutput({
-      script: data_embed.output!,
-      value: 0,
-    });
-  }
-  // Refund change to the solver's address.
-  if (changeAmount > DUST)
-    psbt.addOutput({ address: bitcoinAddress, value: Number(changeAmount) });
-  for (let i = 0; i < inputs.inputs.length; ++i) {
-    psbt.signInput(i, bitcoinWallet);
-  }
-  psbt.finalizeAllInputs();
-  // Broadcast
-  console.log({ psbt, tx: psbt.extractTransaction().toHex() });
+    async updateLatestFee() {
+        const fees = await this.mempoolProvider.retry(() => this.mempoolProvider.bitcoin.fees.getFeesRecommended());
+        this.satsPerVirtualBytes = BigInt(fees.fastestFee);
+    }
 
-  const txId = await pRetry(
-    async () => {
-      const txId = await transactions.postTx({
-        txhex: psbt.extractTransaction().toHex(),
-      });
-      console.log({ txId });
-      return txId;
-    },
-    {
-      retries: 5,
-      minTimeout: 1000,
-      maxTimeout: 5000,
-      factor: 2,
-      onFailedAttempt: (error) => {
-        console.error(
-          `Attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left.`,
+    /** 
+     * Gets the next address that is safe for a Bitcoin swap and marks the new address unsafe.
+     * @dev Returns undefined if no address was found. Make sure to catch in a safe way. 
+     */
+    async getNextSafeBitcoinAddress(amount: bigint): Promise<string | undefined> {
+        let foundDirty = false;
+        let mempoolWait = wait (0);
+        for (let i = 0; i < this.MAX_TRIES_FOR_SAFE_ADDRESS; ++i) {
+            // Get an unchecked clean address.
+            const tryNextAddress = this.getNextBitcoinAddress(foundDirty ? 1 : 0);
+            // Don't spam mempool.
+            await mempoolWait;
+            if(await this.mempoolProvider.isAddressDirty(tryNextAddress)) {
+                mempoolWait = wait(this.MEMPOOL_WAIT_TIME);
+                foundDirty = true;
+                continue;
+            };
+            // Check if we have attempted to get this address before.
+            const tried = this.spendAddress.get(tryNextAddress)?.get(amount.toString());
+            if (tried === undefined || tried === false) {
+                // Check if this address is fresh.
+                const addressMap = this.spendAddress.get(tryNextAddress);
+                if (addressMap === undefined) this.spendAddress.set(tryNextAddress, new Map<string, boolean>);
+                this.spendAddress.get(tryNextAddress)!.set(amount.toString(), true);
+                return tryNextAddress
+            };
+        }
+        return undefined;
+    }
+
+    /** Gets the last spend address. An offset can be added if it intersects with a known spend. */
+    getNextBitcoinAddress(offset: number): string {
+        this.unusedAddressIndex += offset;
+        const pathHdKey = this.hdkey.derive(`m/${this.unusedAddressIndex}`);
+        const publicKey = pathHdKey.publicKey!;
+
+        const bitcoinWallet = ECPair.fromPublicKey(
+            publicKey,
+            {
+                network: 
+                this.getECPairNetwork(),
+            }
         );
-      },
-    },
-  );
-  console.log({ txId });
-  return txId;
+
+        const { address: derivedWalletAddress } = bitcoin.payments.p2wpkh({
+            pubkey: bitcoinWallet.publicKey,
+            network: this.getBitcoinJSNetwork(),
+        });
+
+        if (derivedWalletAddress === undefined) throw new Error("Could not derive address");
+
+        // If we got to the next address index, we need to cleanup
+        // our spend map.
+        if (offset === 0 && derivedWalletAddress !== this.lastHead) {
+            this.lastHead = derivedWalletAddress;
+            this.cleanSpentBitcoinAddress(derivedWalletAddress);
+        }
+
+        return derivedWalletAddress;
+    }
+
+    cleanSpentBitcoinAddress(keepAddress: string) {
+        const spendMapOfHead = this.spendAddress.get(keepAddress);
+        this.spendAddress = new Map<string, Map<string, boolean>>;
+        // Keep the old map of head (or create if no new on head).
+        this.spendAddress.set(keepAddress, spendMapOfHead ?? new Map<string, boolean>);
+    }
+
+    getAddressAtIndex(index: number): {address: string, script: Uint8Array, bitcoinWallet: ECPairInterface} {
+        const pathHdKey = this.hdkey.derive(`m/${index}`);
+        const privateKey = pathHdKey.privateKey!;
+
+        const bitcoinWallet = ECPair.fromPrivateKey(
+            privateKey,
+            {
+                network: 
+                this.getECPairNetwork(),
+            }
+        );
+
+        const { address, output } = bitcoin.payments.p2wpkh({
+            pubkey: bitcoinWallet.publicKey,
+            network: this.getBitcoinJSNetwork(),
+        });
+        return {address: address!, script: output!, bitcoinWallet};
+    }
+
+    /**
+     * Finds the fewest utxos requried to generate a transaction of amount.
+     * May not be optimal as this does not consider how large the excess is thus more fees may actually be paid
+     * then desired.
+     * @param amount Number of sats to find
+     * @param selectedUxtos Already selected UTXOs. Will be included in return
+     * @returns Minimal list of utxos to get slightly more than amount.
+     */
+    getInputs(
+        amount: bigint,
+        selectedUxtos: AddressTxsUtxo[] = [],
+      ): { inputs: AddressTxsUtxo[]; value: bigint } {
+        let candidateUxtos = this.coins;
+        // Filer inputs based on the ones already used.
+        candidateUxtos = candidateUxtos.filter((utxo) => {
+          for (const sUtxo of selectedUxtos) {
+            if (utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid) return false;
+            if (utxo.spentAt != 0) return false;
+          }
+          return true;
+        });
+        if (candidateUxtos.length === 0)
+          return { inputs: selectedUxtos, value: BigInt(BitcoinWallet.utxoSum(selectedUxtos)) };
+        // Search inputs for the smallest amount above inputs.
+        let selectedInput: (typeof candidateUxtos)[0];
+        for (selectedInput of candidateUxtos) {
+          if (BigInt(selectedInput.value) > amount) break;
+        }
+        const selectedInputs = [...selectedUxtos, selectedInput!]; // selectedInput is not undefined since candidateUxtos .length > 0
+        const valueSum = BigInt(BitcoinWallet.utxoSum(selectedInputs));
+        if (valueSum < amount) return this.getInputs(amount, selectedInputs);
+        return { inputs: selectedInputs, value: valueSum };
+    }
+
+    /**
+     * Finds available UTXOs from the stored key.
+     * @param from Starting index. If unset, will searched and empty addresses.
+     */
+    async fetchCoins(from: number = 0) {
+        let w = wait(0);
+        for (let i = from; i < this.unusedAddressIndex; ++i) {
+            // Check if we expect the index to be empty.
+            // Index 0 address is used for change.
+            if (i != 0 && this.emptyAddressIndex.get(i)) continue;
+
+            const pathHdKey = this.hdkey.derive(`m/${i}`);
+            const bitcoinWallet = ECPair.fromPublicKey(
+                pathHdKey.publicKey!,
+                {
+                    network: 
+                    this.getECPairNetwork(),
+                }
+            );
+
+            const { address } = bitcoin.payments.p2wpkh({
+                pubkey: bitcoinWallet.publicKey,
+                network: this.getBitcoinJSNetwork(),
+            });
+
+            if (address === undefined) throw new Error("Could not derive address");
+
+            await w;
+            const utxos = await this.mempoolProvider.getAddressUtxo(address);
+            w = wait(this.MEMPOOL_WAIT_TIME);
+
+            if (utxos.length === 0) {
+                this.emptyAddressIndex.set(i, true);
+                continue;
+            }
+
+            for (let j = 0; j < utxos.length; ++j) {
+                const utxo = utxos[j];
+                // Check if we already know utxo.
+                const known = this.coins.map(
+                    coin => coin.txid === utxo.txid
+                         && coin.vout === utxo.vout
+                ).indexOf(true);
+                if (known != -1) {
+                    // Check if we need to clear spent flag.
+                    if (this.coins[j].spentAt < now() - this.CLEAR_SPENT_COIN_FLAG_AFTER) {
+                        this.coins[j].spentAt = 0;
+                    }
+                    continue;
+                }
+                this.coins.push({...utxo, spentAt: 0, pathIndex: i});
+            }
+        }
+        // If we resetSpentMarkers, then any UTXO with spent == true is not an unspent anymore.
+        for (let i = 0; i < this.coins.length;) {
+            if (this.coins[i].spentAt != 0 && this.coins[i].spentAt < now() - this.CLEAR_SPENT_COIN_FLAG_AFTER) {
+                this.coins.splice(i, 1)
+            } else {
+                ++i;
+            };
+        }
+    }
+
+    /**
+     * Make a tranaction.
+     */
+    makeTransaction(to: string, outputValue: bigint, returnData: string, computeSize: boolean = true, spendInputs = true): bitcoin.Transaction {
+
+        const psbt = new bitcoin.Psbt({
+            network: this.getBitcoinJSNetwork()
+        });
+
+        let size = 144; // vB
+        if (computeSize) size = this.makeTransaction(to, outputValue, returnData, false, false).virtualSize();
+        const fee = BigInt(size) * this.satsPerVirtualBytes;
+
+        const inputs = this.getInputs(outputValue + fee);
+        if (spendInputs) {
+            for (const input of inputs.inputs) {
+                const indexOfCoin = this.coins.map(
+                    coin => coin.txid === input.txid
+                         && coin.vout === input.vout
+                ).indexOf(true);
+                this.coins[indexOfCoin].spentAt = now();
+            }
+        }
+
+        psbt.addInputs(
+            inputs.inputs.map((input) => {
+                return {
+                    hash: input.txid,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: this.getAddressAtIndex(input.pathIndex).script,
+                        value: BigInt(input.value)
+                    }
+                }
+            })
+        );
+        // Add the solving output.
+        psbt.addOutput({ address: to, value: outputValue });
+
+        const opReturnData = returnData.replace("0x", "");
+        if (opReturnData.length > 0) {
+            const data_embed = bitcoin.payments.embed({
+                data: [hexStringToUint8Array(opReturnData)],
+            });
+            psbt.addOutput({
+                script: data_embed.output!,
+                value: 0n,
+            });
+        }
+
+        // Add change output
+        const changeAmount = inputs.value - outputValue - fee;
+        if (changeAmount > this.BITCOIN_DUST_LIMIT)
+            psbt.addOutput({ address: this.getAddressAtIndex(0).address, value: changeAmount });
+        
+        // Sign all inputs.
+        for (let i = 0; i < inputs.inputs.length; ++i) {
+            const input = inputs.inputs[i];
+            const wallet = this.getAddressAtIndex(input.pathIndex).bitcoinWallet;
+            psbt.signInput(i, wallet);
+        }
+        psbt.finalizeAllInputs();
+
+        return psbt.extractTransaction();
+    }
 }

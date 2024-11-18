@@ -23,7 +23,7 @@ export class MempoolProvider {
   }
 
 
-  async retry(f: () => Promise<any>) {
+  async retry<T>(f: () => PromiseLike<T> | T): Promise<T> {
     return pRetry(
         f,
         {
@@ -49,9 +49,7 @@ export class MempoolProvider {
         if (numTransaction > 0) return true;
         return false;
       } catch (e) {
-        throw new Error("Failed to get address description", {
-          cause: e
-        });
+        throw new Error(`Failed to get address description ${e}`);
       }
     });
   }
@@ -62,10 +60,18 @@ export class MempoolProvider {
       try {
         return this.bitcoin.addresses.getAddressTxsUtxo({address});
       } catch (e) {
-        throw new Error("Failed to get address utxos", {
-          cause: e
-        });
+        throw new Error(`Failed to get address utxos ${e}`);
       }
     });
-}
+  }
+
+  async broadcast(txhex: string) {
+    return this.retry(async () => {
+        const txId = await this.bitcoin.transactions.postTx(
+            {txhex}
+        )
+        console.log(`Broadcasted transaction ${txId}`);
+        return txId;
+    });
+  }
 }
