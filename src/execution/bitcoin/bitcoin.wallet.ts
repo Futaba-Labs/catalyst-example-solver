@@ -214,9 +214,9 @@ export class BitcoinWallet {
         let candidateUxtos = this.coins;
         // Filer inputs based on the ones already used.
         candidateUxtos = candidateUxtos.filter((utxo) => {
+          if (utxo.spentAt != 0) return false;
           for (const sUtxo of selectedUxtos) {
             if (utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid) return false;
-            if (utxo.spentAt != 0) return false;
           }
           return true;
         });
