@@ -9,6 +9,7 @@ import { wait } from "src/utils/index";
 import { MempoolProvider } from './mempool';
 
 const ECPair = ECPairFactory(ecc);
+bitcoin.initEccLib(ecc);
 
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
@@ -122,6 +123,7 @@ export class BitcoinWallet {
         for (let i = 0; i < this.MAX_TRIES_FOR_SAFE_ADDRESS; ++i) {
             // Get an unchecked clean address.
             const tryNextAddress = this.getNextBitcoinAddress(foundDirty ? 1 : 0);
+            console.log({tryNextAddress});
             // Don't spam mempool.
             await mempoolWait;
             if(await this.mempoolProvider.isAddressDirty(tryNextAddress)) {
