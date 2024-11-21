@@ -33,7 +33,7 @@ export class BitcoinWallet {
     private CLEAR_SPENT_COIN_FLAG_AFTER = 10 * MINUTES;
     private BIP32_XPRIV = "xprvA8YrhEjRG1XDnVEdwh4sfCtddnD9cNhTd46rSWSGk3SNm6Bhe79N3GsgvKoLe3M2JAvWve8FhpN1cLvA1oSxVhBVK6cSKaEo9s6DSigg5XR"
 
-    private MEMPOOL_WAIT_TIME = 500; // TODO_QOL: move into config
+    private MEMPOOL_WAIT_TIME = 400; // TODO_QOL: move into config
     private MAX_TRIES_FOR_SAFE_ADDRESS = 30000; // TODO_QOL: Move into config.
     // TODO_QOL: Compute based on fee such that no unspendable outputs are created.
     BITCOIN_DUST_LIMIT = 1000n; // sats.
@@ -118,17 +118,17 @@ export class BitcoinWallet {
      * @dev Returns undefined if no address was found. Make sure to catch in a safe way. 
      */
     async getNextSafeBitcoinAddress(amount: bigint): Promise<string | undefined> {
-        let foundDirty = false;
         let mempoolWait = wait (0);
+        let offset = 0;
         for (let i = 0; i < this.MAX_TRIES_FOR_SAFE_ADDRESS; ++i) {
             // Get an unchecked clean address.
-            const tryNextAddress = this.getNextBitcoinAddress(foundDirty ? 1 : 0);
+            const tryNextAddress = this.getNextBitcoinAddress(offset);
             console.log({tryNextAddress});
             // Don't spam mempool.
             await mempoolWait;
             if(await this.mempoolProvider.isAddressDirty(tryNextAddress)) {
+                this.unusedAddressIndex += 1;
                 mempoolWait = wait(this.MEMPOOL_WAIT_TIME);
-                foundDirty = true;
                 continue;
             };
             // Check if we have attempted to get this address before.
@@ -136,18 +136,18 @@ export class BitcoinWallet {
             if (tried === undefined || tried === false) {
                 // Check if this address is fresh.
                 const addressMap = this.spendAddress.get(tryNextAddress);
-                if (addressMap === undefined) this.spendAddress.set(tryNextAddress, new Map<string, boolean>);
+                if (addressMap === undefined) this.spendAddress.set(tryNextAddress, new Map<string, boolean>());
                 this.spendAddress.get(tryNextAddress)!.set(amount.toString(), true);
                 return tryNextAddress
             };
+            ++offset;
         }
         return undefined;
     }
 
     /** Gets the last spend address. An offset can be added if it intersects with a known spend. */
     getNextBitcoinAddress(offset: number): string {
-        this.unusedAddressIndex += offset;
-        const pathHdKey = this.hdkey.derive(`m/${this.unusedAddressIndex}`);
+        const pathHdKey = this.hdkey.derive(`m/${this.unusedAddressIndex + offset}`);
         const publicKey = pathHdKey.publicKey!;
 
         const bitcoinWallet = ECPair.fromPublicKey(
