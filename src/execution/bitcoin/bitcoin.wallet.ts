@@ -13,6 +13,8 @@ bitcoin.initEccLib(ecc);
 
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
+const HOURS = 60 * MINUTES;
+const DAYS = 24 * HOURS;
 
 export interface AddressTxsUtxo {
     txid: string;
@@ -22,12 +24,14 @@ export interface AddressTxsUtxo {
     pathIndex: number;
 }
 
-const now = () => Date.parse(new Date().toISOString()) / 1000
+// get UTC timestamp
+export const now = () => new Date().getTime() / 1000;
 
 export class BitcoinWallet {
     mempoolProvider: MempoolProvider;
 
     // Continous services:
+    private UTXO_ORACLE_VALIDITY_PERIOD = (3 * DAYS + 1 * DAYS) / SECONDS; // Validity period is 3 days, safety buffer is 1 day.
     private GET_COINS_EVERY = 5 * MINUTES; // TODO_QOL: Move into config
     private UPDATE_BITCOIN_FEE_EVERY = 2 * MINUTES; // TODO_QOL: Move into config
     private CLEAR_SPENT_COIN_FLAG_AFTER = 10 * MINUTES;
@@ -44,7 +48,12 @@ export class BitcoinWallet {
     private satsPerVirtualBytes = 60n;
     private findCoins;
 
-    private unusedAddressIndex = 0;
+    // 0 is used as a change address. So we will start it at 1.
+    // This leads to ~MEMPOOL_WAIT_TIME ms faster startup
+    private goodToBeUsedAddressIndex = 1; // TODO: this should be persistet.
+    private addressDiscoveryIndex = 1; // this should not be persistet.
+    /** Maps an address index to when it was last used as an in */
+    private addressLastInput = new Map<number, number>;
     private emptyAddressIndex = new Map<number, boolean>;
     coins: AddressTxsUtxo[] = [];
 
@@ -53,7 +62,6 @@ export class BitcoinWallet {
      * will rotate non-head addresses forward.
      */
     private spendAddress: Map<string, Map<string, boolean>>;
-    private lastHead: string | undefined;
 
     private getECPairNetwork() {
         return this.mainnet ? networks.bitcoin : networks.testnet;
@@ -71,7 +79,9 @@ export class BitcoinWallet {
         return sum;
     }
       
-    /** If you want to make sure the wallet is ready, await this */
+    /** Once this promise resolves, the wallet can generate safe addresses. */
+    public ready: Promise<string>;
+    /** Once this promise resolves, the wallet can generate safe addresses and access its balance. */
     public initialization: Promise<void>;
 
     constructor(mainnet: boolean, findCoins: boolean = true) {
@@ -86,11 +96,13 @@ export class BitcoinWallet {
         this.initialization = this.initialize();
     }
 
-    /** Sets unusedAddressIndex to the head of the address list. */
+    /** Sets goodToBeUsedAddressIndex to the head of the address list. */
     private async initialize() {
         console.log(`Initializing Bitcoin wallet with pubKey: ${this.hdkey.publicExtendedKey}`);
         this.updateLatestFee();
-        await this.getNextSafeBitcoinAddress(0n);
+        this.ready = this.getNextSafeBitcoinAddress(0n);
+        await this.ready;
+        await this.discoverAddresses();
         if (this.findCoins) {
             await this.fetchCoins()
             console.log(this.coins);
@@ -113,11 +125,63 @@ export class BitcoinWallet {
         this.satsPerVirtualBytes = BigInt(fees.fastestFee);
     }
 
+    /** If goodToBeUsedAddressIndex is persistet, it is important that this is called on init. */
+    async discoverAddresses() {
+        // It is assumed that if this.goodToBeUsedAddressIndex contains 1 then this.goodToBeUsedAddressIndex hasn't been persistet.
+        this.addressDiscoveryIndex = this.addressLastInput.get(1) === undefined ? 1 : this.goodToBeUsedAddressIndex;
+        let mempoolWait = wait(0);
+        let addressLastUsedAt = 1; // This variable aids to ensure the while loop can't run forever.
+        while (addressLastUsedAt != 0) {
+            const { address: tryNextAddress } = this.getAddressAtIndex(this.addressDiscoveryIndex);
+            await mempoolWait;
+            addressLastUsedAt = await this.mempoolProvider.addressLastUsedAt(tryNextAddress);
+            mempoolWait = wait(this.MEMPOOL_WAIT_TIME);
+            if (addressLastUsedAt > 0) {
+                this.addressDiscoveryIndex += 1;
+                this.addressLastInput.set(this.addressDiscoveryIndex, addressLastUsedAt);
+                continue;
+            }
+            break;
+        }
+    }
+
+    /**
+     * Calling this function will attempt to decrease the goodToBeUsedAddressIndex.
+     * If this is called before a bitcoin address loop, it will attempt to optimise
+     * address generation.
+     */
+    async recycleAddressIndex() {
+        // If not, it means we need to search. We want the lowest key with a value that works.
+        let lowestKey = -1;
+        let currentTimestamp = now();
+        this.addressLastInput.forEach((v, k) => {
+            if (k < lowestKey) {
+                if (v <= currentTimestamp - this.UTXO_ORACLE_VALIDITY_PERIOD) {
+                    lowestKey = k;
+                }
+            }
+        });
+        // if this is true, we can use the newly found index.
+        if (lowestKey != -1) {
+            // Sanity check. Ensure that this has had a tx in the past.
+            if (this.addressLastInput.get(lowestKey) > 0) {
+                // We can reset the spend map.
+                const { address } = this.getAddressAtIndex(lowestKey);
+                this.spendAddress.set(address, new Map<string, boolean>());
+            }
+            this.goodToBeUsedAddressIndex = lowestKey;
+        } else {
+            let largestKey: number = Math.max(...this.addressLastInput.keys(), 0);
+            if (largestKey > this.goodToBeUsedAddressIndex) this.goodToBeUsedAddressIndex = largestKey + 1;
+        }
+    }
+
     /** 
      * Gets the next address that is safe for a Bitcoin swap and marks the new address unsafe.
      * @dev Returns undefined if no address was found. Make sure to catch in a safe way. 
      */
     async getNextSafeBitcoinAddress(amount: bigint): Promise<string | undefined> {
+        this.recycleAddressIndex();
         let mempoolWait = wait (0);
         let offset = 0;
         for (let i = 0; i < this.MAX_TRIES_FOR_SAFE_ADDRESS; ++i) {
@@ -126,9 +190,13 @@ export class BitcoinWallet {
             console.log({tryNextAddress});
             // Don't spam mempool.
             await mempoolWait;
-            if(await this.mempoolProvider.isAddressDirty(tryNextAddress)) {
-                this.unusedAddressIndex += 1;
+            const addressLastUsedAt = await this.mempoolProvider.addressLastUsedAt(tryNextAddress);
+            if (addressLastUsedAt > now() - this.UTXO_ORACLE_VALIDITY_PERIOD) {
+                this.addressLastInput.set(this.goodToBeUsedAddressIndex + offset, addressLastUsedAt);
+                this.goodToBeUsedAddressIndex += 1;
                 mempoolWait = wait(this.MEMPOOL_WAIT_TIME);
+                // if we tried an address recommended by recycleAddressIndex and it failed. We should try another recommendation.
+                this.recycleAddressIndex();
                 continue;
             };
             // Check if we have attempted to get this address before.
@@ -147,39 +215,9 @@ export class BitcoinWallet {
 
     /** Gets the last spend address. An offset can be added if it intersects with a known spend. */
     getNextBitcoinAddress(offset: number): string {
-        const pathHdKey = this.hdkey.derive(`m/${this.unusedAddressIndex + offset}`);
-        const publicKey = pathHdKey.publicKey!;
-
-        const bitcoinWallet = ECPair.fromPublicKey(
-            publicKey,
-            {
-                network: 
-                this.getECPairNetwork(),
-            }
-        );
-
-        const { address: derivedWalletAddress } = bitcoin.payments.p2wpkh({
-            pubkey: bitcoinWallet.publicKey,
-            network: this.getBitcoinJSNetwork(),
-        });
-
-        if (derivedWalletAddress === undefined) throw new Error("Could not derive address");
-
-        // If we got to the next address index, we need to cleanup
-        // our spend map.
-        if (offset === 0 && derivedWalletAddress !== this.lastHead) {
-            this.lastHead = derivedWalletAddress;
-            this.cleanSpentBitcoinAddress(derivedWalletAddress);
-        }
+        const { address: derivedWalletAddress } = this.getAddressAtIndex(this.goodToBeUsedAddressIndex + offset);
 
         return derivedWalletAddress;
-    }
-
-    cleanSpentBitcoinAddress(keepAddress: string) {
-        const spendMapOfHead = this.spendAddress.get(keepAddress);
-        this.spendAddress = new Map<string, Map<string, boolean>>;
-        // Keep the old map of head (or create if no new on head).
-        this.spendAddress.set(keepAddress, spendMapOfHead ?? new Map<string, boolean>);
     }
 
     getAddressAtIndex(index: number): {address: string, script: Uint8Array, bitcoinWallet: ECPairInterface} {
@@ -198,6 +236,9 @@ export class BitcoinWallet {
             pubkey: bitcoinWallet.publicKey,
             network: this.getBitcoinJSNetwork(),
         });
+
+        if (address === undefined) throw new Error("Could not derive address");
+
         return {address: address!, script: output!, bitcoinWallet};
     }
 
@@ -241,7 +282,7 @@ export class BitcoinWallet {
      */
     async fetchCoins(from: number = 0) {
         let w = wait(0);
-        for (let i = from; i < this.unusedAddressIndex; ++i) {
+        for (let i = from; i < Math.max(this.addressDiscoveryIndex, this.goodToBeUsedAddressIndex); ++i) {
             // Check if we expect the index to be empty.
             // Index 0 address is used for change.
             if (i != 0 && this.emptyAddressIndex.get(i)) continue;

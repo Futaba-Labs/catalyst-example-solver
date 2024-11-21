@@ -2,10 +2,13 @@
 import mempoolJS from '@catalabs/mempool.js';
 import { MempoolReturn } from '@catalabs/mempool.js/lib/interfaces';
 import pRetry from 'p-retry';
+import { now } from './bitcoin.wallet';
 const TESTNET = true;
 // TODO: Fix
 
 
+// Needs to be larger than any timestamp we will see in our lifetime.
+const ONE_DAY = 60*60*24; // 1 day
 
 export class MempoolProvider {
   private TESTNET: boolean;
@@ -40,14 +43,16 @@ export class MempoolProvider {
       );
     }
 
-  async isAddressDirty(address: string): Promise<boolean> {
+  async addressLastUsedAt(address: string): Promise<number> {
     return this.retry(async () => {
       try {
-        const addrState = await this.bitcoin.addresses.getAddress({ address });
-        // Get the total number of transactions.
-        const numTransaction = addrState.chain_stats.tx_count + addrState.mempool_stats.tx_count;
-        if (numTransaction > 0) return true;
-        return false;
+        // mempool promises this is sorted by latest.
+        const addressTransactions = await this.bitcoin.addresses.getAddressTxs({ address });
+        // get the max timestamp of the latest transactions. If an unconfirmed transaction exists, set to 1 day in the future.
+        const transactionTimes = addressTransactions
+          .filter(tx => Math.max(...tx.vout.map(vo => Number(vo.scriptpubkey_address == address))) == 1) // Select incoming transactions
+          .map(tx => Number(!tx.status.confirmed) * (ONE_DAY + now()) + tx.status.block_time)
+        return Math.max(...transactionTimes, 0);
       } catch (e) {
         throw new Error(`Failed to get address description ${e}`);
       }
