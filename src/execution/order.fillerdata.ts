@@ -1,8 +1,6 @@
 import { ethers } from 'ethers';
 
-const SECONDS = 1000;
-const MINUTES = 60 * SECONDS;
-const UNDERWRITING_DURATION = 5 * MINUTES;
+const UNDERWRITE_BY = 2n**32n - 1n;
 
 export function createFillerData(
   payTo: string,
@@ -10,7 +8,7 @@ export function createFillerData(
   execData = '',
 ): string {
   const now = Date.now();
-  const underwriteBy = (now + UNDERWRITING_DURATION) / SECONDS;
+  const underwriteBy = UNDERWRITE_BY;
   if (execData.length === 0) {
     const fillerDataVersion = '0x01';
     const fillerAddress = payTo.replace('0x', '');
