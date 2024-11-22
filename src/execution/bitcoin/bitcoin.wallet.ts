@@ -19,6 +19,12 @@ const DAYS = 24 * HOURS;
 export interface AddressTxsUtxo {
     txid: string;
     vout: number;
+    status: {
+        confirmed: boolean;
+        block_height: number;
+        block_hash: string;
+        block_time: number;
+    };
     value: number;
     spentAt: number;
     pathIndex: number;
@@ -56,6 +62,8 @@ export class BitcoinWallet {
     private addressLastInput = new Map<number, number>;
     private emptyAddressIndex = new Map<number, boolean>;
     coins: AddressTxsUtxo[] = [];
+
+    public ownTransactions = new Map<string, boolean>;
 
     /** 
      * Maps addresses to spent amount. Only needs to be valid for the head since we
@@ -136,6 +144,7 @@ export class BitcoinWallet {
             await mempoolWait;
             addressLastUsedAt = await this.mempoolProvider.addressLastUsedAt(tryNextAddress);
             mempoolWait = wait(this.MEMPOOL_WAIT_TIME);
+            console.log({addressLastUsedAt});
             if (addressLastUsedAt > 0) {
                 this.addressDiscoveryIndex += 1;
                 this.addressLastInput.set(this.addressDiscoveryIndex, addressLastUsedAt);
@@ -258,7 +267,16 @@ export class BitcoinWallet {
         // Filer inputs based on the ones already used.
         candidateUxtos = candidateUxtos.filter((utxo) => {
           if (utxo.spentAt != 0) return false;
-          for (const sUtxo of selectedUxtos) {
+          if (!utxo.status.confirmed) {
+            // Only select unconfirmed transactions that we sent. This ensures there is
+            // a minimum fee & it won't get replaced invalidating any transactions we may have sent.
+            // This does decrease our money velocity. If you want to fix, make the selection more clever.
+            const ourTransaction = this.ownTransactions.get(utxo.txid.toLowerCase());
+            if (!ourTransaction) return false;
+        };
+
+          // Check if we already selected this utxo for inclusion.
+        for (const sUtxo of selectedUxtos) {
             if (utxo.vout === sUtxo.vout && utxo.txid === sUtxo.txid) return false;
           }
           return true;

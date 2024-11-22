@@ -51,7 +51,7 @@ export class MempoolProvider {
         // get the max timestamp of the latest transactions. If an unconfirmed transaction exists, set to 1 day in the future.
         const transactionTimes = addressTransactions
           .filter(tx => Math.max(...tx.vout.map(vo => Number(vo.scriptpubkey_address == address))) == 1) // Select incoming transactions
-          .map(tx => Number(!tx.status.confirmed) * (ONE_DAY + now()) + tx.status.block_time)
+          .map(tx => tx.status.confirmed ? tx.status.block_time : ONE_DAY + now());
         return Math.max(...transactionTimes, 0);
       } catch (e) {
         throw new Error(`Failed to get address description ${e}`);

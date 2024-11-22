@@ -78,7 +78,8 @@ async function fillBTC(order: OrderKey) {
   ).toHex();
 
   // Broadcast!
-  await bitcoinWallet.mempoolProvider.broadcast(txhex)
+  const bitcoinTransactionId = await bitcoinWallet.mempoolProvider.broadcast(txhex) as string;
+  bitcoinWallet.ownTransactions.set(bitcoinTransactionId.toLowerCase(), true);
 }
 
 export async function fillOutputs(order: OrderKey) {

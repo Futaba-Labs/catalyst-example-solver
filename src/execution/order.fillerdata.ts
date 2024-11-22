@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 
-const UNDERWRITE_BY = 2n**32n - 1n;
+const UNDERWRITE_BY = 2n**31n;
 
 export function createFillerData(
   payTo: string,
