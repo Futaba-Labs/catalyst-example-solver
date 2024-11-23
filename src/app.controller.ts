@@ -74,6 +74,8 @@ export class AppController implements OnModuleInit {
               this.ws,
             );
             break;
+          case CatalystWsEventType.ORDER_STATUS_CHANGE:
+            break;
           default:
             console.log('Unknown message type:', parsedData);
         }

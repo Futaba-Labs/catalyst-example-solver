@@ -144,7 +144,6 @@ export class BitcoinWallet {
             await mempoolWait;
             addressLastUsedAt = await this.mempoolProvider.addressLastUsedAt(tryNextAddress);
             mempoolWait = wait(this.MEMPOOL_WAIT_TIME);
-            console.log({addressLastUsedAt});
             if (addressLastUsedAt > 0) {
                 this.addressDiscoveryIndex += 1;
                 this.addressLastInput.set(this.addressDiscoveryIndex, addressLastUsedAt);
@@ -196,10 +195,10 @@ export class BitcoinWallet {
         for (let i = 0; i < this.MAX_TRIES_FOR_SAFE_ADDRESS; ++i) {
             // Get an unchecked clean address.
             const tryNextAddress = this.getNextBitcoinAddress(offset);
-            console.log({tryNextAddress});
             // Don't spam mempool.
             await mempoolWait;
             const addressLastUsedAt = await this.mempoolProvider.addressLastUsedAt(tryNextAddress);
+            console.log({tryNextAddress, addressLastUsedAt, clearenceTime: now() - this.UTXO_ORACLE_VALIDITY_PERIOD });
             if (addressLastUsedAt > now() - this.UTXO_ORACLE_VALIDITY_PERIOD) {
                 this.addressLastInput.set(this.goodToBeUsedAddressIndex + offset, addressLastUsedAt);
                 this.goodToBeUsedAddressIndex += 1;
@@ -301,9 +300,6 @@ export class BitcoinWallet {
     async fetchCoins(from: number = 0) {
         let w = wait(0);
         for (let i = from; i < Math.max(this.addressDiscoveryIndex, this.goodToBeUsedAddressIndex); ++i) {
-            // Check if we expect the index to be empty.
-            // Index 0 address is used for change.
-            if (i != 0 && this.emptyAddressIndex.get(i)) continue;
 
             const pathHdKey = this.hdkey.derive(`m/${i}`);
             const bitcoinWallet = ECPair.fromPublicKey(
@@ -330,10 +326,36 @@ export class BitcoinWallet {
                 continue;
             }
 
+            // Get the utxos we know for the address index.
+            const knownUtxosForAddressIndex = this.coins.filter(utxo => utxo.pathIndex === i);
+
+            // We need to check if there are utxos in this that isn't in utxos.
+            // Those have been spent.
+            const spentUtxos = knownUtxosForAddressIndex.filter(knownUtxo => {
+                for (const stillUtxo of utxos) {
+                    if (stillUtxo.txid === knownUtxo.txid && stillUtxo.vout === knownUtxo.vout) return false;
+                }
+                return true;
+            });
+            // Delete all spentUtxos from our coin list. Perf: Long loop is examined first.
+            for (let j = 0; j < this.coins.length;) {
+                const examinedCoin = this.coins[j];
+                let removed = false;
+                for (const spentUtxo of spentUtxos) {
+                    if (examinedCoin.txid === spentUtxo.txid && examinedCoin.vout === spentUtxo.vout) {
+                        this.coins.splice(j, 1);
+                        removed = true;
+                    }
+                }
+                // If we remove a coin from the index, the list becomes 1 length shorter.
+                // We can't increment j.
+                if (!removed) ++j;
+            }
+                
             for (let j = 0; j < utxos.length; ++j) {
                 const utxo = utxos[j];
-                // Check if we already know utxo.
-                const known = this.coins.map(
+                // Check if we already know the utxo.
+                const known = knownUtxosForAddressIndex.map(
                     coin => coin.txid === utxo.txid
                          && coin.vout === utxo.vout
                 ).indexOf(true);
@@ -346,14 +368,6 @@ export class BitcoinWallet {
                 }
                 this.coins.push({...utxo, spentAt: 0, pathIndex: i});
             }
-        }
-        // If we resetSpentMarkers, then any UTXO with spent == true is not an unspent anymore.
-        for (let i = 0; i < this.coins.length;) {
-            if (this.coins[i].spentAt != 0 && this.coins[i].spentAt < now() - this.CLEAR_SPENT_COIN_FLAG_AFTER) {
-                this.coins.splice(i, 1)
-            } else {
-                ++i;
-            };
         }
     }
 

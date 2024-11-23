@@ -19,4 +19,7 @@ export enum CatalystWsEventType {
   SOLVER_QUOTE = 'solver-quote',
   SOLVER_ORDER_SIGNED = 'solver-order-signed',
   SOLVER_ORDER_INITIATED = 'solver-order-initiated',
+
+  // Discard
+  ORDER_STATUS_CHANGE = 'app:order-status-change'
 }
