@@ -60,7 +60,6 @@ export class BitcoinWallet {
     private addressDiscoveryIndex = 1; // this should not be persistet.
     /** Maps an address index to when it was last used as an in */
     private addressLastInput = new Map<number, number>;
-    private emptyAddressIndex = new Map<number, boolean>;
     coins: AddressTxsUtxo[] = [];
 
     public ownTransactions = new Map<string, boolean>;
@@ -300,31 +299,11 @@ export class BitcoinWallet {
     async fetchCoins(from: number = 0) {
         let w = wait(0);
         for (let i = from; i < Math.max(this.addressDiscoveryIndex, this.goodToBeUsedAddressIndex); ++i) {
-
-            const pathHdKey = this.hdkey.derive(`m/${i}`);
-            const bitcoinWallet = ECPair.fromPublicKey(
-                pathHdKey.publicKey!,
-                {
-                    network: 
-                    this.getECPairNetwork(),
-                }
-            );
-
-            const { address } = bitcoin.payments.p2wpkh({
-                pubkey: bitcoinWallet.publicKey,
-                network: this.getBitcoinJSNetwork(),
-            });
-
-            if (address === undefined) throw new Error("Could not derive address");
+            const { address } = this.getAddressAtIndex(i);
 
             await w;
             const utxos = await this.mempoolProvider.getAddressUtxo(address);
             w = wait(this.MEMPOOL_WAIT_TIME);
-
-            if (utxos.length === 0) {
-                this.emptyAddressIndex.set(i, true);
-                continue;
-            }
 
             // Get the utxos we know for the address index.
             const knownUtxosForAddressIndex = this.coins.filter(utxo => utxo.pathIndex === i);
@@ -350,6 +329,10 @@ export class BitcoinWallet {
                 // If we remove a coin from the index, the list becomes 1 length shorter.
                 // We can't increment j.
                 if (!removed) ++j;
+            }
+
+            if (utxos.length === 0) {
+                continue;
             }
                 
             for (let j = 0; j < utxos.length; ++j) {
