@@ -1,609 +1,609 @@
 [
-    {
-        "type": "constructor",
-        "inputs": [
-            {
-                "name": "_lightClient",
-                "type": "address",
-                "internalType": "address"
-            }
-        ],
-        "stateMutability": "payable"
-    },
-    {
-        "type": "function",
-        "name": "CHAIN_ID",
-        "inputs": [],
-        "outputs": [
-            {
-                "name": "",
-                "type": "uint32",
-                "internalType": "uint32"
-            }
-        ],
-        "stateMutability": "view"
-    },
-    {
-        "type": "function",
-        "name": "LIGHT_CLIENT",
-        "inputs": [],
-        "outputs": [
-            {
-                "name": "",
-                "type": "address",
-                "internalType": "address"
-            }
-        ],
-        "stateMutability": "view"
-    },
-    {
-        "type": "function",
-        "name": "isProven",
-        "inputs": [
-            {
-                "name": "output",
-                "type": "tuple",
-                "internalType": "struct OutputDescription",
-                "components": [
-                    {
-                        "name": "remoteOracle",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "token",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "amount",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
-                        "name": "recipient",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "chainId",
-                        "type": "uint32",
-                        "internalType": "uint32"
-                    },
-                    {
-                        "name": "remoteCall",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    }
-                ]
-            },
-            {
-                "name": "fillDeadline",
-                "type": "uint32",
-                "internalType": "uint32"
-            }
-        ],
-        "outputs": [
-            {
-                "name": "proven",
-                "type": "bool",
-                "internalType": "bool"
-            }
-        ],
-        "stateMutability": "view"
-    },
-    {
-        "type": "function",
-        "name": "isProven",
-        "inputs": [
-            {
-                "name": "outputs",
-                "type": "tuple[]",
-                "internalType": "struct OutputDescription[]",
-                "components": [
-                    {
-                        "name": "remoteOracle",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "token",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "amount",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
-                        "name": "recipient",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "chainId",
-                        "type": "uint32",
-                        "internalType": "uint32"
-                    },
-                    {
-                        "name": "remoteCall",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    }
-                ]
-            },
-            {
-                "name": "fillDeadline",
-                "type": "uint32",
-                "internalType": "uint32"
-            }
-        ],
-        "outputs": [
-            {
-                "name": "proven",
-                "type": "bool",
-                "internalType": "bool"
-            }
-        ],
-        "stateMutability": "view"
-    },
-    {
-        "type": "function",
-        "name": "verify",
-        "inputs": [
-            {
-                "name": "output",
-                "type": "tuple",
-                "internalType": "struct OutputDescription",
-                "components": [
-                    {
-                        "name": "remoteOracle",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "token",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "amount",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
-                        "name": "recipient",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "chainId",
-                        "type": "uint32",
-                        "internalType": "uint32"
-                    },
-                    {
-                        "name": "remoteCall",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    }
-                ]
-            },
-            {
-                "name": "fillDeadline",
-                "type": "uint32",
-                "internalType": "uint32"
-            },
-            {
-                "name": "blockNum",
-                "type": "uint256",
-                "internalType": "uint256"
-            },
-            {
-                "name": "inclusionProof",
-                "type": "tuple",
-                "internalType": "struct BtcTxProof",
-                "components": [
-                    {
-                        "name": "blockHeader",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    },
-                    {
-                        "name": "txId",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "txIndex",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
-                        "name": "txMerkleProof",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    },
-                    {
-                        "name": "rawTx",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    }
-                ]
-            },
-            {
-                "name": "txOutIx",
-                "type": "uint256",
-                "internalType": "uint256"
-            }
-        ],
-        "outputs": [],
-        "stateMutability": "nonpayable"
-    },
-    {
-        "type": "function",
-        "name": "verify",
-        "inputs": [
-            {
-                "name": "output",
-                "type": "tuple",
-                "internalType": "struct OutputDescription",
-                "components": [
-                    {
-                        "name": "remoteOracle",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "token",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "amount",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
-                        "name": "recipient",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "chainId",
-                        "type": "uint32",
-                        "internalType": "uint32"
-                    },
-                    {
-                        "name": "remoteCall",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    }
-                ]
-            },
-            {
-                "name": "fillDeadline",
-                "type": "uint32",
-                "internalType": "uint32"
-            },
-            {
-                "name": "blockNum",
-                "type": "uint256",
-                "internalType": "uint256"
-            },
-            {
-                "name": "inclusionProof",
-                "type": "tuple",
-                "internalType": "struct BtcTxProof",
-                "components": [
-                    {
-                        "name": "blockHeader",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    },
-                    {
-                        "name": "txId",
-                        "type": "bytes32",
-                        "internalType": "bytes32"
-                    },
-                    {
-                        "name": "txIndex",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
-                        "name": "txMerkleProof",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    },
-                    {
-                        "name": "rawTx",
-                        "type": "bytes",
-                        "internalType": "bytes"
-                    }
-                ]
-            },
-            {
-                "name": "txOutIx",
-                "type": "uint256",
-                "internalType": "uint256"
-            },
-            {
-                "name": "previousBlockHeader",
-                "type": "bytes",
-                "internalType": "bytes"
-            }
-        ],
-        "outputs": [],
-        "stateMutability": "nonpayable"
-    },
-    {
-        "type": "event",
-        "name": "OutputProven",
-        "inputs": [
-            {
-                "name": "fillDeadline",
-                "type": "uint32",
-                "indexed": false,
-                "internalType": "uint32"
-            },
-            {
-                "name": "outputHash",
-                "type": "bytes32",
-                "indexed": false,
-                "internalType": "bytes32"
-            }
-        ],
-        "anonymous": false
-    },
-    {
-        "type": "event",
-        "name": "OutputVerified",
-        "inputs": [
-            {
-                "name": "outputHash",
-                "type": "bytes32",
-                "indexed": false,
-                "internalType": "bytes32"
-            },
-            {
-                "name": "fillDeadline",
-                "type": "uint32",
-                "indexed": false,
-                "internalType": "uint32"
-            },
-            {
-                "name": "token",
-                "type": "bytes32",
-                "indexed": false,
-                "internalType": "bytes32"
-            },
-            {
-                "name": "recipient",
-                "type": "bytes32",
-                "indexed": false,
-                "internalType": "bytes32"
-            },
-            {
-                "name": "amount",
-                "type": "uint256",
-                "indexed": false,
-                "internalType": "uint256"
-            },
-            {
-                "name": "calldataHash",
-                "type": "bytes32",
-                "indexed": false,
-                "internalType": "bytes32"
-            },
-            {
-                "name": "verificationContext",
-                "type": "bytes32",
-                "indexed": false,
-                "internalType": "bytes32"
-            }
-        ],
-        "anonymous": false
-    },
-    {
-        "type": "error",
-        "name": "BadAmount",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "BadDestinationIdentifier",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "BadTokenFormat",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "BlockHashMismatch",
-        "inputs": [
-            {
-                "name": "blockHeader",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            },
-            {
-                "name": "givenBlockHash",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            }
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_lightClient",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "CHAIN_ID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "LIGHT_CLIENT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isProven",
+    "inputs": [
+      {
+        "name": "output",
+        "type": "tuple",
+        "internalType": "struct OutputDescription",
+        "components": [
+          {
+            "name": "remoteOracle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "token",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "chainId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "remoteCall",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
         ]
-    },
-    {
-        "type": "error",
-        "name": "BlockhashMismatch",
-        "inputs": [
-            {
-                "name": "actual",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            },
-            {
-                "name": "proposed",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            }
+      },
+      {
+        "name": "fillDeadline",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "proven",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isProven",
+    "inputs": [
+      {
+        "name": "outputs",
+        "type": "tuple[]",
+        "internalType": "struct OutputDescription[]",
+        "components": [
+          {
+            "name": "remoteOracle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "token",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "chainId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "remoteCall",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
         ]
-    },
-    {
-        "type": "error",
-        "name": "FillDeadlineFarInFuture",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "FillDeadlineInPast",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "InvalidFormat",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "NoBlock",
-        "inputs": [
-            {
-                "name": "currentHeight",
-                "type": "uint256",
-                "internalType": "uint256"
-            },
-            {
-                "name": "proposedHeight",
-                "type": "uint256",
-                "internalType": "uint256"
-            }
+      },
+      {
+        "name": "fillDeadline",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "proven",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "verify",
+    "inputs": [
+      {
+        "name": "output",
+        "type": "tuple",
+        "internalType": "struct OutputDescription",
+        "components": [
+          {
+            "name": "remoteOracle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "token",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "chainId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "remoteCall",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
         ]
-    },
-    {
-        "type": "error",
-        "name": "NotImplemented",
-        "inputs": []
-    },
-    {
-        "type": "error",
-        "name": "ScriptMismatch",
-        "inputs": [
-            {
-                "name": "expected",
-                "type": "bytes",
-                "internalType": "bytes"
-            },
-            {
-                "name": "actual",
-                "type": "bytes",
-                "internalType": "bytes"
-            }
+      },
+      {
+        "name": "fillDeadline",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "blockNum",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "inclusionProof",
+        "type": "tuple",
+        "internalType": "struct BtcTxProof",
+        "components": [
+          {
+            "name": "blockHeader",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "txId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "txIndex",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "txMerkleProof",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "rawTx",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
         ]
-    },
-    {
-        "type": "error",
-        "name": "ScriptTooLong",
-        "inputs": [
-            {
-                "name": "length",
-                "type": "uint256",
-                "internalType": "uint256"
-            }
+      },
+      {
+        "name": "txOutIx",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "verify",
+    "inputs": [
+      {
+        "name": "output",
+        "type": "tuple",
+        "internalType": "struct OutputDescription",
+        "components": [
+          {
+            "name": "remoteOracle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "token",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "chainId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "remoteCall",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
         ]
-    },
-    {
-        "type": "error",
-        "name": "TooFewConfirmations",
-        "inputs": [
-            {
-                "name": "current",
-                "type": "uint256",
-                "internalType": "uint256"
-            },
-            {
-                "name": "wanted",
-                "type": "uint256",
-                "internalType": "uint256"
-            }
+      },
+      {
+        "name": "fillDeadline",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "blockNum",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "inclusionProof",
+        "type": "tuple",
+        "internalType": "struct BtcTxProof",
+        "components": [
+          {
+            "name": "blockHeader",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "txId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "txIndex",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "txMerkleProof",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "rawTx",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
         ]
-    },
-    {
-        "type": "error",
-        "name": "TxIDMismatch",
-        "inputs": [
-            {
-                "name": "rawTxId",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            },
-            {
-                "name": "txProofId",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            }
-        ]
-    },
-    {
-        "type": "error",
-        "name": "TxIndexNot0",
-        "inputs": [
-            {
-                "name": "index",
-                "type": "uint256",
-                "internalType": "uint256"
-            }
-        ]
-    },
-    {
-        "type": "error",
-        "name": "TxMerkleRootMismatch",
-        "inputs": [
-            {
-                "name": "blockTxRoot",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            },
-            {
-                "name": "txRoot",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            }
-        ]
-    },
-    {
-        "type": "error",
-        "name": "WrongChain",
-        "inputs": [
-            {
-                "name": "expected",
-                "type": "uint32",
-                "internalType": "uint32"
-            },
-            {
-                "name": "actual",
-                "type": "uint32",
-                "internalType": "uint32"
-            }
-        ]
-    },
-    {
-        "type": "error",
-        "name": "WrongRemoteOracle",
-        "inputs": [
-            {
-                "name": "addressThis",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            },
-            {
-                "name": "expected",
-                "type": "bytes32",
-                "internalType": "bytes32"
-            }
-        ]
-    }
+      },
+      {
+        "name": "txOutIx",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "previousBlockHeader",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "OutputProven",
+    "inputs": [
+      {
+        "name": "fillDeadline",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "outputHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OutputVerified",
+    "inputs": [
+      {
+        "name": "outputHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "fillDeadline",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "token",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "recipient",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "calldataHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "verificationContext",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "BadAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadDestinationIdentifier",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadTokenFormat",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BlockHashMismatch",
+    "inputs": [
+      {
+        "name": "blockHeader",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "givenBlockHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BlockhashMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "proposed",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FillDeadlineFarInFuture",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FillDeadlineInPast",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidFormat",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoBlock",
+    "inputs": [
+      {
+        "name": "currentHeight",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "proposedHeight",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotImplemented",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ScriptMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "actual",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ScriptTooLong",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooFewConfirmations",
+    "inputs": [
+      {
+        "name": "current",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "wanted",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TxIDMismatch",
+    "inputs": [
+      {
+        "name": "rawTxId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "txProofId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TxIndexNot0",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TxMerkleRootMismatch",
+    "inputs": [
+      {
+        "name": "blockTxRoot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "txRoot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WrongChain",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "actual",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WrongRemoteOracle",
+    "inputs": [
+      {
+        "name": "addressThis",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "expected",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  }
 ]

@@ -12,7 +12,7 @@ export interface OutputDescription {
 }
 
 export interface DutchAuctionOrderData {
-  type: 'DutchAuction'; // Not to be submitted
+  type: "DutchAuction"; // Not to be submitted
   verificationContext: string;
   verificationContract: string;
   proofDeadline: number;
@@ -29,7 +29,7 @@ export interface DutchAuctionOrderData {
 }
 
 export interface LimitOrderData {
-  type: 'LimitOrder'; // Not to be submitted
+  type: "LimitOrder"; // Not to be submitted
   proofDeadline: number;
   challengeDeadline: number;
   collateralToken: string;

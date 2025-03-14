@@ -1,5 +1,5 @@
-import 'dotenv/config';
-import axios from 'axios';
+import "dotenv/config";
+import axios from "axios";
 
 const BASE_URL = process.env.COINGECKO_URI;
 
@@ -19,19 +19,19 @@ export const getCoingeckoSupportedTokens = async () => {
         include_platform: true,
       },
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
       },
     });
     return response.data as CoinGeckoTokenListItem[];
   } catch (error) {
-    console.error('Error fetching supported currencies:', error);
+    console.error("Error fetching supported currencies:", error);
     throw error;
   }
 };
 
 export const getCoingeckoPricesByIds = async (
   coinIds: string[],
-  vsCurrency = 'usd',
+  vsCurrency = "usd",
 ) => {
   try {
     const response = await axios.get(`${BASE_URL}/simple/price`, {
@@ -40,12 +40,12 @@ export const getCoingeckoPricesByIds = async (
         vs_currencies: vsCurrency,
       },
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
       },
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching token prices:', error);
+    console.error("Error fetching token prices:", error);
     throw error;
   }
 };
@@ -53,7 +53,7 @@ export const getCoingeckoPricesByIds = async (
 export const getCoingeckoPriceByTokenAddress = async (
   platformId: string,
   contractAddress: string,
-  vsCurrency = 'usd',
+  vsCurrency = "usd",
 ) => {
   try {
     const response = await axios.get(
@@ -64,13 +64,13 @@ export const getCoingeckoPriceByTokenAddress = async (
           vs_currencies: vsCurrency,
         },
         headers: {
-          accept: 'application/json',
+          accept: "application/json",
         },
       },
     );
     return response.data;
   } catch (error) {
-    console.error('Error fetching token price:', error);
+    console.error("Error fetching token price:", error);
     throw error;
   }
 };

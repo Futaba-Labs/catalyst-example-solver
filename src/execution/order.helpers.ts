@@ -1,9 +1,9 @@
-import { AbiCoder } from 'ethers';
+import { AbiCoder } from "ethers";
 import {
   CrossChainOrder,
   Input,
   OutputDescription,
-} from 'src/types/cross-chain-order.types';
+} from "src/types/cross-chain-order.types";
 
 const abi = new AbiCoder();
 
@@ -23,12 +23,12 @@ export function flattenOutputs(outputs: OutputDescription[]) {
 }
 
 export function encodeOrderData(
-  orderData: CrossChainOrder['orderData'],
+  orderData: CrossChainOrder["orderData"],
 ): string {
-  if (orderData.type === 'LimitOrder') {
+  if (orderData.type === "LimitOrder") {
     return abi.encode(
       [
-        'tuple(uint32,uint32,address,uint256,uint256,address,tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])',
+        "tuple(uint32,uint32,address,uint256,uint256,address,tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])",
       ],
       [
         [
@@ -43,10 +43,10 @@ export function encodeOrderData(
         ],
       ],
     );
-  } else if (orderData.type === 'DutchAuction') {
+  } else if (orderData.type === "DutchAuction") {
     return abi.encode(
       [
-        'tuple(bytes32,address,uint32,uint32,address,uint256,uint256,address,uint32,int256[],int256[],tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])',
+        "tuple(bytes32,address,uint32,uint32,address,uint256,uint256,address,uint32,int256[],int256[],tuple(address,uint256)[],tuple(bytes32,bytes32,uint256,bytes32,uint32,bytes)[])",
       ],
       [
         [

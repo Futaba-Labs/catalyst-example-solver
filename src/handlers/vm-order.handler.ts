@@ -1,18 +1,22 @@
-import { Log } from 'ethers';
-import { WebSocket } from 'ws';
-import { BaseReactor__factory } from 'lib/contracts';
-import { fillOutputs } from 'src/execution/order.fill';
-import { initiateOrder } from 'src/execution/order.initiate';
-import { CatalystEvent, CatalystOrderData } from 'src/types';
-import { CatalystWsEventType } from 'src/types/events';
-import { OrderKey } from 'src/types/order-key.types';
-import { wait } from 'src/utils';
-import { provider } from 'src/common/signer';
+import { Log } from "ethers";
+import { WebSocket } from "ws";
+import { BaseReactor__factory } from "lib/contracts";
+import { fillOutputs } from "src/execution/order.fill";
+import { initiateOrder } from "src/execution/order.initiate";
+import { CatalystEvent, CatalystOrderData } from "src/types";
+import { CatalystWsEventType } from "src/types/events";
+import { OrderKey } from "src/types/order-key.types";
+import { wait } from "src/utils";
+import { provider } from "src/common/signer";
 
 export async function handleVmOrder(
   orderRequest: CatalystEvent<CatalystOrderData>,
   ws: WebSocket,
 ) {
+  console.dir(orderRequest, {
+    depth: 10,
+  });
+  return;
   const { data } = orderRequest;
   if (!data) {
     console.error(`No data in ${orderRequest.event}`);
@@ -51,7 +55,7 @@ export async function handleVmOrder(
     if (log.address !== order.settlementContract) continue;
     if (
       log.topics[0] !==
-      '0x068f390a186ab224f3ad01f21c41b507b6c4e715dcfd2e640ce83b784071eb3f'
+      "0x068f390a186ab224f3ad01f21c41b507b6c4e715dcfd2e640ce83b784071eb3f"
     )
       continue;
     orderKeyLog = log; // TODO: Parse log.data.
@@ -62,7 +66,7 @@ export async function handleVmOrder(
     );
   const reactorInterface = BaseReactor__factory.createInterface();
   const parsedLog = reactorInterface.decodeEventLog(
-    'OrderInitiated',
+    "OrderInitiated",
     orderKeyLog.data,
   );
   const orderKey = parsedLog.orderKey as OrderKey;

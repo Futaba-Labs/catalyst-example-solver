@@ -28,7 +28,7 @@ interface OutputDescription {
 }
 
 export interface LimitOrderData {
-  type: 'LimitOrder';
+  type: "LimitOrder";
   proofDeadline: number;
   challengeDeadline: number;
   collateralToken: string;
@@ -40,7 +40,7 @@ export interface LimitOrderData {
 }
 
 export interface DutchAuctionOrderData {
-  type: 'DutchAuction';
+  type: "DutchAuction";
   verificationContext: string;
   verificationContract: string;
   proofDeadline: number;

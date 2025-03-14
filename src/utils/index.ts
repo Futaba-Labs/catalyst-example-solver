@@ -1,7 +1,7 @@
-import { bech32, bech32m } from 'bech32';
-import bs58check from 'bs58check';
-import { AddressType } from 'bitcoin-address-validation';
-import { BTC_TOKEN_ADDRESS_PREFIX } from 'src/common/constants';
+import { bech32, bech32m } from "bech32";
+import bs58check from "bs58check";
+import { AddressType } from "bitcoin-address-validation";
+import { BTC_TOKEN_ADDRESS_PREFIX } from "src/common/constants";
 
 export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,8 +15,8 @@ export function isFromBTCToEvm(asset: string) {
 }
 
 export function formatRemoteOracleAddress(remoteOracle: string): string {
-  const noPrefix = remoteOracle.replace('0x', '').toLowerCase();
-  return `0x${noPrefix.padStart(64, '0')}`;
+  const noPrefix = remoteOracle.replace("0x", "").toLowerCase();
+  return `0x${noPrefix.padStart(64, "0")}`;
 }
 
 export function getBitcoinAddressVersion(
@@ -67,9 +67,9 @@ export function getSwapRecipientFromAddress(
       const decodedData = bs58check.decode(address);
       const unPaddedRecipient = decodedData
         .slice(1)
-        .reduce((t, x) => t + x.toString(16).padStart(2, '0'), '');
-      const paddedRecipient = unPaddedRecipient.padEnd(64, '0');
-      return '0x' + paddedRecipient;
+        .reduce((t, x) => t + x.toString(16).padStart(2, "0"), "");
+      const paddedRecipient = unPaddedRecipient.padEnd(64, "0");
+      return "0x" + paddedRecipient;
     }
 
     case AddressType.p2wpkh:
@@ -77,20 +77,20 @@ export function getSwapRecipientFromAddress(
       const decodedData = bech32.decode(address);
       const unPaddedRecipient = bech32
         .fromWords(decodedData.words.slice(1))
-        .reduce((t, x) => t + x.toString(16).padStart(2, '0'), '');
-      const paddedRecipient = unPaddedRecipient.padEnd(64, '0');
-      return '0x' + paddedRecipient;
+        .reduce((t, x) => t + x.toString(16).padStart(2, "0"), "");
+      const paddedRecipient = unPaddedRecipient.padEnd(64, "0");
+      return "0x" + paddedRecipient;
     }
 
     case AddressType.p2tr: {
       const decodedData = bech32m.decode(address);
       const recipient = bech32
         .fromWords(decodedData.words.slice(1))
-        .reduce((t, x) => t + x.toString(16).padStart(2, '0'), '');
-      return '0x' + recipient;
+        .reduce((t, x) => t + x.toString(16).padStart(2, "0"), "");
+      return "0x" + recipient;
     }
 
     default:
-      throw new Error('Unsupported address type');
+      throw new Error("Unsupported address type");
   }
 }

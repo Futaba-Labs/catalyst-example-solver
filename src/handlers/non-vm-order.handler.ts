@@ -84,12 +84,15 @@ export async function handleNonVmOrder(
   const addressType = AddressType.p2wpkh;
   const addressTypeIndex = getBitcoinAddressVersion(addressType);
 
-  const token = BTC_TOKEN_ADDRESS_PREFIX +
+  const token =
+    BTC_TOKEN_ADDRESS_PREFIX +
     numConfirmationsRequired.toString(16).padStart(2, "0") +
     addressTypeIndex.toString(16).padStart(2, "0");
   // TODO: validate that the below address is indeed the right decoded recipient.
-  const bitcoinAddress = await bitcoinWallet.getNextSafeBitcoinAddress(output.amount)
-  console.log({bitcoinAddress});
+  const bitcoinAddress = await bitcoinWallet.getNextSafeBitcoinAddress(
+    output.amount,
+  );
+  console.log({ bitcoinAddress });
   const recipient = getSwapRecipientFromAddress(bitcoinAddress, addressType);
 
   // Set us as the recipient.

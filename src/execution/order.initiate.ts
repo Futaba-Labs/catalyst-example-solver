@@ -1,24 +1,24 @@
-import 'dotenv/config';
+import "dotenv/config";
 
-import { ethers } from 'ethers';
-import { BaseReactor__factory, ERC20__factory } from 'lib/contracts';
-import { createFillerData } from './order.fillerdata';
-import { encodeOrderData } from './order.helpers';
-import { CrossChainOrder } from 'src/types/cross-chain-order.types';
-import { formatRemoteOracleAddress } from 'src/utils';
+import { ethers } from "ethers";
+import { BaseReactor__factory, ERC20__factory } from "lib/contracts";
+import { createFillerData } from "./order.fillerdata";
+import { encodeOrderData } from "./order.helpers";
+import { CrossChainOrder } from "src/types/cross-chain-order.types";
+import { formatRemoteOracleAddress } from "src/utils";
 import {
   BITCOIN_IDENTIFIER,
   DEFAULT_UW_INCENTIVE,
   DUTCH_AUCTION_REACTOR,
   LIMIT_ORDER_REACTOR,
   SOLVER_ADDRESS,
-} from 'src/common/constants';
-import { relayerSigner } from 'src/common/signer';
+} from "src/common/constants";
+import { relayerSigner } from "src/common/signer";
 
 export enum OracleType {
   Unsupported = undefined,
-  EVM = 'EVM',
-  Bitcoin = 'Bitcoin',
+  EVM = "EVM",
+  Bitcoin = "Bitcoin",
 }
 
 // TODO: move this into a config.
@@ -28,37 +28,37 @@ approvedOracles.set(84532, new Map<string, OracleType>());
 approvedOracles
   .get(84532)!
   .set(
-    '0x4A698444A0982d8C954C94eC18C00c8c1Ce10939'.toLowerCase(),
+    "0x4A698444A0982d8C954C94eC18C00c8c1Ce10939".toLowerCase(),
     OracleType.Bitcoin,
   );
 approvedOracles
   .get(84532)!
   .set(
-    formatRemoteOracleAddress('0x4A698444A0982d8C954C94eC18C00c8c1Ce10939'),
+    formatRemoteOracleAddress("0x4A698444A0982d8C954C94eC18C00c8c1Ce10939"),
     OracleType.Bitcoin,
   );
 approvedOracles
   .get(84532)!
   .set(
-    '0x3cA2BC13f63759D627449C5FfB0713125c24b019'.toLowerCase(),
+    "0x3cA2BC13f63759D627449C5FfB0713125c24b019".toLowerCase(),
     OracleType.Bitcoin,
   );
 approvedOracles
   .get(84532)!
   .set(
-    formatRemoteOracleAddress('0x3cA2BC13f63759D627449C5FfB0713125c24b019'),
-    OracleType.Bitcoin,
-  );
-  approvedOracles
-  .get(84532)!
-  .set(
-    '0x000000Ee3Edef26AB5B58922406A2C409661fe23'.toLowerCase(),
+    formatRemoteOracleAddress("0x3cA2BC13f63759D627449C5FfB0713125c24b019"),
     OracleType.Bitcoin,
   );
 approvedOracles
   .get(84532)!
   .set(
-    formatRemoteOracleAddress('0x000000Ee3Edef26AB5B58922406A2C409661fe23'),
+    "0x000000Ee3Edef26AB5B58922406A2C409661fe23".toLowerCase(),
+    OracleType.Bitcoin,
+  );
+approvedOracles
+  .get(84532)!
+  .set(
+    formatRemoteOracleAddress("0x000000Ee3Edef26AB5B58922406A2C409661fe23"),
     OracleType.Bitcoin,
   );
 
@@ -66,7 +66,7 @@ const supportedCollateralTokens = new Map<number, Map<string, boolean>>();
 supportedCollateralTokens.set(84532, new Map<string, boolean>());
 supportedCollateralTokens
   .get(84532)!
-  .set('0x036CbD53842c5426634e7929541eC2318f3dCF7e'.toLowerCase(), true);
+  .set("0x036CbD53842c5426634e7929541eC2318f3dCF7e".toLowerCase(), true);
 
 export async function evaluateOrder(order: CrossChainOrder): Promise<boolean> {
   // Check local oracle.
@@ -177,12 +177,12 @@ export function getOrderTypeFromOracle(order: CrossChainOrder): OracleType {
 
 function checkReactor(
   reactorAddr: string,
-  reactorType: 'LimitOrder' | 'DutchAuction',
+  reactorType: "LimitOrder" | "DutchAuction",
 ): boolean {
-  if (reactorType === 'LimitOrder') {
+  if (reactorType === "LimitOrder") {
     return reactorAddr.toLowerCase() === LIMIT_ORDER_REACTOR.toLowerCase();
   }
-  if (reactorType === 'DutchAuction') {
+  if (reactorType === "DutchAuction") {
     return reactorAddr.toLowerCase() === DUTCH_AUCTION_REACTOR.toLowerCase();
   }
   return false;
@@ -232,13 +232,13 @@ export async function evaluateCollateral(
 function validateBitcoinOutput(token: string, remoteCall: string): boolean {
   // Check that the output has been formatted correctly.
   // Sanity check since we use the slice a lot. Should never trigger.
-  if (token.replace('0x', '').length !== 64) {
+  if (token.replace("0x", "").length !== 64) {
     throw Error(`Unexpected token length ${token.length} for ${token}`);
   }
 
   if (
     token
-      .replace('0x', '')
+      .replace("0x", "")
       .slice(0, 64 - 4)
       .toLowerCase() !== BITCOIN_IDENTIFIER
   ) {
@@ -247,7 +247,7 @@ function validateBitcoinOutput(token: string, remoteCall: string): boolean {
   }
 
   const numConfirmations = Number(
-    '0x' + token.replace('0x', '').slice(64 - 4, 64 - 2),
+    "0x" + token.replace("0x", "").slice(64 - 4, 64 - 2),
   );
   if (numConfirmations > 3) {
     console.log(
@@ -258,7 +258,7 @@ function validateBitcoinOutput(token: string, remoteCall: string): boolean {
 
   // TODO: Check if this number of confirmations fits into a 99% proof interval.
   const addressVersion = Number(
-    '0x' + token.replace('0x', '').slice(64 - 2, 64),
+    "0x" + token.replace("0x", "").slice(64 - 2, 64),
   );
   if (addressVersion === 0 || addressVersion > 5) {
     console.log(
@@ -267,7 +267,7 @@ function validateBitcoinOutput(token: string, remoteCall: string): boolean {
     return false;
   }
 
-  if (remoteCall.replace('0x', '') !== '') {
+  if (remoteCall.replace("0x", "") !== "") {
     console.log(
       `Order Eval: Bitcoin Remote call not empty ${token}, ${remoteCall}`,
     );

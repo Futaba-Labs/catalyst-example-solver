@@ -57,28 +57,32 @@ async function fillBTC(order: OrderKey) {
     );
 
   const recipientHash = output.recipient;
-  const version = Number('0x' + output.token.slice(output.token.length - 2));
+  const version = Number("0x" + output.token.slice(output.token.length - 2));
 
   const bitcoinRecipientAddress = decodeBitcoinAddress(
-      version,
-      recipientHash,
-      TESTNET,
+    version,
+    recipientHash,
+    TESTNET,
   );
 
   const satoshis = output.amount;
   console.log({
-      bitcoinRecipientAddress,
-      satoshis,
+    bitcoinRecipientAddress,
+    satoshis,
   });
 
-  const txhex = bitcoinWallet.makeTransaction(
+  const txhex = bitcoinWallet
+    .makeTransaction(
       bitcoinRecipientAddress,
       BigInt(satoshis),
-      output.remoteCall
-  ).toHex();
+      output.remoteCall,
+    )
+    .toHex();
 
   // Broadcast!
-  const bitcoinTransactionId = await bitcoinWallet.mempoolProvider.broadcast(txhex) as string;
+  const bitcoinTransactionId = (await bitcoinWallet.mempoolProvider.broadcast(
+    txhex,
+  )) as string;
   bitcoinWallet.ownTransactions.set(bitcoinTransactionId.toLowerCase(), true);
 }
 
@@ -87,7 +91,7 @@ export async function fillOutputs(order: OrderKey) {
   // Check if order outputs are Bitcoin // TODO:
   if (
     order.outputs[0].token.replace("0x", "").slice(0, 64 - 4) ==
-      BITCOIN_IDENTIFIER
+    BITCOIN_IDENTIFIER
   ) {
     fillBTC(order);
   } else {

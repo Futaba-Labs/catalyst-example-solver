@@ -1,15 +1,15 @@
-import { Controller, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { RawData, WebSocket } from 'ws';
-import { handleQuoteRequest } from './handlers/quote-request.handler';
+import { Controller, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { RawData, WebSocket } from "ws";
+import { handleQuoteRequest } from "./handlers/quote-request.handler";
 import {
   CatalystEvent,
   CatalystOrderData,
   CatalystQuoteRequestData,
-} from './types';
-import { CatalystWsEventType } from './types/events';
-import { handleVmOrder } from './handlers/vm-order.handler';
-import { handleNonVmOrder } from './handlers/non-vm-order.handler';
+} from "./types";
+import { CatalystWsEventType } from "./types/events";
+import { handleVmOrder } from "./handlers/vm-order.handler";
+import { handleNonVmOrder } from "./handlers/non-vm-order.handler";
 
 @Controller()
 export class AppController implements OnModuleInit {
@@ -22,20 +22,20 @@ export class AppController implements OnModuleInit {
   }
 
   async listenToOrderServer() {
-    const wsUri = this.config.getOrThrow('ORDER_SERVER_WS_URI');
-    const apiKey = this.config.getOrThrow('ORDER_SERVER_API_KEY');
+    const wsUri = this.config.getOrThrow("ORDER_SERVER_WS_URI");
+    const apiKey = this.config.getOrThrow("ORDER_SERVER_API_KEY");
 
     this.ws = new WebSocket(wsUri, {
       headers: {
-        'x-api-key': apiKey,
+        "x-api-key": apiKey,
       },
     });
 
-    this.ws.on('open', () => {
-      console.log('Connected to WebSocket server');
+    this.ws.on("open", () => {
+      console.log("Connected to WebSocket server");
     });
 
-    this.ws.on('message', (data: RawData) => {
+    this.ws.on("message", (data: RawData) => {
       try {
         const parsedData: CatalystEvent<unknown> = JSON.parse(data.toString());
         switch (parsedData.event) {
@@ -77,25 +77,25 @@ export class AppController implements OnModuleInit {
           case CatalystWsEventType.ORDER_STATUS_CHANGE:
             break;
           default:
-            console.log('Unknown message type:', parsedData);
+            console.log("Unknown message type:", parsedData);
         }
       } catch (error) {
-        console.error('Error parsing JSON:', error);
+        console.error("Error parsing JSON:", error);
       }
     });
 
-    this.ws.on('error', (error: Error) => {
-      console.error('WebSocket error:', error);
+    this.ws.on("error", (error: Error) => {
+      console.error("WebSocket error:", error);
     });
 
-    this.ws.on('close', async () => {
-      console.error('Disconnected from WebSocket');
+    this.ws.on("close", async () => {
+      console.error("Disconnected from WebSocket");
       await this.reconnect();
     });
   }
 
   async reconnect() {
-    console.log('Attempting to reconnect...');
+    console.log("Attempting to reconnect...");
     setTimeout(async () => {
       this.ws.close();
       await this.listenToOrderServer();
