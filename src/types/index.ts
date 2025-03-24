@@ -77,6 +77,26 @@ export interface CrossChainOrder {
   orderData: DutchAuctionOrderData | LimitOrderData;
 }
 
+export interface CrossChainOrderV3 {
+  user: string;
+  nonce: number;
+  originChainId: number;
+  fillDeadline: number;
+  localOracle: string;
+  inputs: [number, number][];
+  outputs: OutputDescription_v3[];
+}
+export interface OutputDescription_v3 {
+  remoteOracle: string;
+  remoteFiller: string;
+  token: string;
+  amount: number;
+  recipient: string;
+  chainId: number;
+  remoteCall: string;
+  fulfillmentContext: string;
+}
+
 export interface QuoteContext {
   toAsset: string;
   toPrice: string;
@@ -98,6 +118,14 @@ export interface CatalystOrderData {
   quote: QuoteContext;
   signature: string;
   meta: CatalystOrderMeta;
+}
+
+export interface CatalystOrderDataV3 {
+  order: CrossChainOrderV3;
+  quote: QuoteContext;
+  meta: CatalystOrderMeta;
+  sponsorSignature: string;
+  allocatorSignature: string;
 }
 
 export interface PaginationMeta {

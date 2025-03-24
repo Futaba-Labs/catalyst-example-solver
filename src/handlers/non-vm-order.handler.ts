@@ -17,13 +17,13 @@ import {
   getSwapRecipientFromAddress,
   wait,
 } from "src/utils";
-import { provider, signer } from "src/common/signer";
+import { baseSigner, provider } from "src/common/signer";
 import { bitcoinWallet } from "src/execution/order.fill";
 
 const sdk = new EvmSDK({
-  provider: provider,
+  provider: provider[84532],
 });
-sdk.connectSigner(signer).catch((e) => console.error(e));
+sdk.connectSigner(baseSigner).catch((e) => console.error(e));
 
 export async function handleNonVmOrder(
   orderRequest: CatalystEvent<CatalystOrderData>,
@@ -57,7 +57,7 @@ export async function handleNonVmOrder(
   // TODO: Limir order only support for now (same for frontend)
   // TODO: store and map allowances. It is cheaper to use nonces that are right after each other
   const nonce = BigInt(Math.floor(Math.random() * 10 ** 18));
-  const swapper = signer.address;
+  const swapper = baseSigner.address;
 
   // assign solver's fields for permit2
   order.nonce = nonce;

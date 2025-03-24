@@ -1,4 +1,3 @@
-import { CatalystWsEventType } from "src/types/events";
 import { assetMap } from "../external/asset-map";
 import { getCoingeckoPricesByIds } from "../external/coingecko";
 import { CatalystEvent, CatalystQuoteRequestData } from "src/types";

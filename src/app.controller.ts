@@ -5,11 +5,13 @@ import { handleQuoteRequest } from "./handlers/quote-request.handler";
 import {
   CatalystEvent,
   CatalystOrderData,
+  CatalystOrderDataV3,
   CatalystQuoteRequestData,
 } from "./types";
 import { CatalystWsEventType } from "./types/events";
-import { handleVmOrder } from "./handlers/vm-order.handler";
+// import { handleVmOrder } from "./handlers/vm-order.handler";
 import { handleNonVmOrder } from "./handlers/non-vm-order.handler";
+import { handleVmOrder } from "./handlers/v3/vm-order-v3.handler";
 
 @Controller()
 export class AppController implements OnModuleInit {
@@ -63,17 +65,17 @@ export class AppController implements OnModuleInit {
           case CatalystWsEventType.VM_ORDER:
             console.log(`[${CatalystWsEventType.VM_ORDER}]`, parsedData);
             handleVmOrder(
-              parsedData as CatalystEvent<CatalystOrderData>,
+              parsedData as CatalystEvent<CatalystOrderDataV3>,
               this.ws,
             );
             break;
-          case CatalystWsEventType.NON_VM_ORDER:
-            console.log(`[${CatalystWsEventType.NON_VM_ORDER}]`, parsedData);
-            handleNonVmOrder(
-              parsedData as CatalystEvent<CatalystOrderData>,
-              this.ws,
-            );
-            break;
+          // case CatalystWsEventType.NON_VM_ORDER:
+          //   console.log(`[${CatalystWsEventType.NON_VM_ORDER}]`, parsedData);
+          //   handleNonVmOrder(
+          //     parsedData as CatalystEvent<CatalystOrderData>,
+          //     this.ws,
+          //   );
+          //   break;
           case CatalystWsEventType.ORDER_STATUS_CHANGE:
             break;
           default:

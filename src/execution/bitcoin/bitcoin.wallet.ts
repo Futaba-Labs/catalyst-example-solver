@@ -101,7 +101,7 @@ export class BitcoinWallet {
 
     this.mainnet = mainnet;
 
-    this.initialization = this.initialize();
+    // this.initialization = this.initialize();
   }
 
   /** Sets goodToBeUsedAddressIndex to the head of the address list. */

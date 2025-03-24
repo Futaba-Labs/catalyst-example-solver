@@ -7,16 +7,12 @@ import { CatalystEvent, CatalystOrderData } from "src/types";
 import { CatalystWsEventType } from "src/types/events";
 import { OrderKey } from "src/types/order-key.types";
 import { wait } from "src/utils";
-import { provider } from "src/common/signer";
+import { baseSigner } from "src/common/signer";
 
 export async function handleVmOrder(
   orderRequest: CatalystEvent<CatalystOrderData>,
   ws: WebSocket,
 ) {
-  console.dir(orderRequest, {
-    depth: 10,
-  });
-  return;
   const { data } = orderRequest;
   if (!data) {
     console.error(`No data in ${orderRequest.event}`);
@@ -38,7 +34,7 @@ export async function handleVmOrder(
 
   // const transactionReceipt = await transactionResponse.wait(2);
   // FIXME: hash can be null
-  const transactionReceipt = await provider.waitForTransaction(
+  const transactionReceipt = await baseSigner.provider.waitForTransaction(
     transactionResponse.hash,
     2,
   );
