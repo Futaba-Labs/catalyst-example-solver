@@ -4,7 +4,7 @@ import { RawData, WebSocket } from "ws";
 import { handleQuoteRequest } from "./handlers/quote-request.handler";
 import {
   CatalystEvent,
-  CatalystOrderDataV3,
+  CatalystOrderV3,
   CatalystQuoteRequestData,
 } from "./types";
 import { CatalystWsEventType } from "./types/events";
@@ -50,7 +50,7 @@ export class AppController implements OnModuleInit {
             break;
           case CatalystWsEventType.VM_ORDER:
             console.log(`[${CatalystWsEventType.VM_ORDER}]`, parsedData);
-            handleVmOrder(parsedData as CatalystEvent<CatalystOrderDataV3>);
+            handleVmOrder(parsedData as CatalystEvent<CatalystOrderV3>);
             break;
           default:
             console.log("Unknown message type:", parsedData);
