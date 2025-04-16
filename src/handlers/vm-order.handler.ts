@@ -20,9 +20,11 @@ import {
 export async function handleVmOrder(
   orderRequest: CatalystEvent<CatalystOrder>,
 ) {
-
   // Initially, we assue that orders only have a single output.
-  if (orderRequest.data.order.outputs.length != 1) throw new Error(`Got ${orderRequest.data.order.outputs.length} outputs instead of 1`);
+  if (orderRequest.data.order.outputs.length != 1)
+    throw new Error(
+      `Got ${orderRequest.data.order.outputs.length} outputs instead of 1`,
+    );
   const output = orderRequest.data.order.outputs[0];
 
   // Check if solver supports the chains.
