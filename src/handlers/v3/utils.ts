@@ -79,9 +79,9 @@ export const getEncodedFillDescription = (
       output.token,
       output.amount,
       output.recipient,
-      0, // TODO: check this
+      output.remoteCall.replace("0x", "").length / 2,
       output.remoteCall,
-      0, // TODO: check this
+      output.fulfillmentContext.replace("0x", "").length / 2,
       output.fulfillmentContext,
     ],
   );
