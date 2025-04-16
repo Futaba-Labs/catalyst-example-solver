@@ -1,12 +1,7 @@
 import { Controller, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { RawData, WebSocket } from "ws";
-import { handleQuoteRequest } from "./handlers/quote-request.handler";
-import {
-  CatalystEvent,
-  CatalystOrder,
-  CatalystQuoteRequestData,
-} from "./types";
+import { CatalystEvent, CatalystOrder } from "./types";
 
 import { handleVmOrder } from "./handlers/vm-order.handler";
 import { CatalystWsEvent, CommonWsEvent } from "./types/events";
