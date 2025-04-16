@@ -13,88 +13,13 @@ export interface CatalystQuoteRequestData {
   amount: string;
 }
 
-interface Input {
-  token: string;
-  amount: bigint;
-}
-
-interface OutputDescription {
-  remoteOracle: string;
-  token: string;
-  amount: bigint;
-  recipient: string;
-  chainId: number;
-  remoteCall: string;
-}
-
-export interface LimitOrderData {
-  type: "LimitOrder";
-  proofDeadline: number;
-  challengeDeadline: number;
-  collateralToken: string;
-  fillerCollateralAmount: bigint;
-  challengerCollateralAmount: bigint;
-  localOracle: string;
-  inputs: Input[];
-  outputs: OutputDescription[];
-}
-
-export interface DutchAuctionOrderData {
-  type: "DutchAuction";
-  verificationContext: string;
-  verificationContract: string;
-  proofDeadline: number;
-  challengeDeadline: number;
-  collateralToken: string;
-  fillerCollateralAmount: bigint;
-  challengerCollateralAmount: bigint;
-  localOracle: string;
-  slopeStartingTime: number;
-  inputSlopes: string[];
-  outputSlopes: string[];
-  inputs: Input[];
-  outputs: OutputDescription[];
-}
-
-// order data is encoded as bytes, we will prob not use but it's here in case
-export interface CrossChainOrderEncoded {
-  settlementContract: string;
-  swapper: string;
-  nonce: bigint;
-  originChainId: number;
-  initiateDeadline: number;
-  fillDeadline: number;
-  orderData: string;
-}
-
-export interface CrossChainOrder {
-  settlementContract: string;
-  swapper: string;
-  nonce: bigint;
-  originChainId: number;
-  initiateDeadline: number;
-  fillDeadline: number;
-  orderData: DutchAuctionOrderData | LimitOrderData;
-}
-
-export interface CrossChainOrderV3 {
-  user: string;
-  nonce: number;
-  originChainId: number;
-  fillDeadline: number;
-  localOracle: string;
-  inputs: [number, number][];
-  outputs: OutputDescription_v3[];
-}
-export interface OutputDescription_v3 {
-  remoteOracle: string;
-  remoteFiller: string;
-  token: string;
-  amount: number;
-  recipient: string;
-  chainId: number;
-  remoteCall: string;
-  fulfillmentContext: string;
+// TODO: this should contain the orderId so solver's don't have to derive it.
+export interface CatalystOrder {
+  order: CompactOrder;
+  quotes: QuoteContext;
+  meta: CatalystOrderMeta;
+  sponsorSignature: string;
+  allocatorSignature: string;
 }
 
 export interface QuoteContext {
@@ -106,27 +31,27 @@ export interface QuoteContext {
   intermediary: string;
 }
 
-export interface CatalystOrderData {
-  order: CrossChainOrder;
-  quote: QuoteContext;
-  signature: string;
-  meta: CatalystOrderMeta;
+export interface CompactOrder {
+  type: "CompactOrder"; // Used to identify this as a compact order
+  user: string;
+  nonce: number;
+  originChainId: number;
+  fillDeadline: number;
+  localOracle: string;
+  inputs: [number, number][];
+  outputs: OutputDescription[];
 }
 
-export interface PaginationMeta {
-  total: number;
-  limit: number;
-  offset: number;
+export interface OutputDescription {
+  remoteOracle: string;
+  remoteFiller: string;
+  token: string;
+  amount: number;
+  recipient: string;
+  chainId: number;
+  remoteCall: string;
+  fulfillmentContext: string;
 }
-
-export interface GetOrdersResponse {
-  data: CatalystOrderData[];
-  pagination: PaginationMeta;
-}
-
-/**
- * CATALYST V3
- */
 
 export interface CatalystOrderMeta {
   submitTime: number;
@@ -150,42 +75,4 @@ export interface CatalystOrderMeta {
   provenAt?: Date;
   failedAt?: Date;
   expiredAt?: Date;
-}
-
-export interface QuoteContext {
-  toAsset: string;
-  toPrice: string;
-  discount: string;
-  fromAsset: string;
-  fromPrice: string;
-  intermediary: string;
-}
-
-export interface OutputDescriptionV3 {
-  remoteOracle: string;
-  remoteFiller: string;
-  token: string;
-  amount: number;
-  recipient: string;
-  chainId: number;
-  remoteCall: string;
-  fulfillmentContext: string;
-}
-
-export interface CompactOrder {
-  user: string;
-  nonce: number;
-  originChainId: number;
-  fillDeadline: number;
-  localOracle: string;
-  inputs: [number, number][];
-  outputs: OutputDescriptionV3[];
-}
-
-export interface CatalystOrderV3 {
-  order: CompactOrder;
-  quotes: QuoteContext;
-  meta: CatalystOrderMeta;
-  sponsorSignature: string;
-  allocatorSignature: string;
 }

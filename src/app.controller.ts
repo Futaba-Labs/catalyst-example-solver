@@ -1,14 +1,10 @@
 import { Controller, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { RawData, WebSocket } from "ws";
-import { handleQuoteRequest } from "./handlers/quote-request.handler";
-import {
-  CatalystEvent,
-  CatalystOrderV3,
-  CatalystQuoteRequestData,
-} from "./types";
-import { CatalystWsEventType } from "./types/events";
-import { handleVmOrder } from "./handlers/v3/vm-order-v3.handler";
+import { CatalystEvent, CatalystOrder } from "./types";
+
+import { handleVmOrder } from "./handlers/vm-order.handler";
+import { CatalystWsEvent, CommonWsEvent } from "./types/events";
 
 @Controller()
 export class AppController implements OnModuleInit {
@@ -38,19 +34,12 @@ export class AppController implements OnModuleInit {
       try {
         const parsedData: CatalystEvent<unknown> = JSON.parse(data.toString());
         switch (parsedData.event) {
-          case CatalystWsEventType.PING:
+          case CommonWsEvent.PING:
             this.handleReceivePing();
             break;
-          case CatalystWsEventType.QUOTE_REQUEST:
-            console.log(`[${CatalystWsEventType.QUOTE_REQUEST}]`, parsedData);
-            handleQuoteRequest(
-              parsedData as CatalystEvent<CatalystQuoteRequestData>,
-              this.ws,
-            );
-            break;
-          case CatalystWsEventType.VM_ORDER:
-            console.log(`[${CatalystWsEventType.VM_ORDER}]`, parsedData);
-            handleVmOrder(parsedData as CatalystEvent<CatalystOrderV3>);
+          case CatalystWsEvent.USER_ORDER_VM:
+            console.log(`[${CatalystWsEvent.USER_ORDER_VM}]`, parsedData);
+            handleVmOrder(parsedData as CatalystEvent<CatalystOrder>);
             break;
           default:
             console.log("Unknown message type:", parsedData);
@@ -81,7 +70,7 @@ export class AppController implements OnModuleInit {
   async handleReceivePing() {
     this.ws.send(
       JSON.stringify({
-        event: CatalystWsEventType.PONG,
+        event: CommonWsEvent.PONG,
       }),
     );
   }
