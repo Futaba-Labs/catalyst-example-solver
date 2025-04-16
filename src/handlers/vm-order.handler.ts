@@ -1,82 +1,159 @@
-import { Log } from "ethers";
-import { WebSocket } from "ws";
-import { BaseReactor__factory } from "lib/contracts";
-import { fillOutputs } from "src/execution/order.fill";
-import { initiateOrder } from "src/execution/order.initiate";
-import { CatalystEvent, CatalystOrderData } from "src/types";
-import { CatalystWsEventType } from "src/types/events";
-import { OrderKey } from "src/types/order-key.types";
-import { wait } from "src/utils";
-import { baseSigner } from "src/common/signer";
+import { CatalystEvent, CatalystOrder } from "src/types";
+import { ethers, TransactionReceipt } from "ethers";
+import { abi as CoinFillerAbi } from "../../abi/CoinFiller.json";
+import { abi as WormholeOracleAbi } from "../../abi/WormholeOracle.json";
+import { abi as CompactSettlerAbi } from "../../abi/CompactSettler.json";
+import { baseSigner, ethSigner } from "src/common/signer";
+import {
+  compactSettlerAddress,
+  usdcAddress,
+  whOracleAddress,
+} from "src/common/constants";
+import {
+  abi,
+  getAddressFromBytes32,
+  getBytes32FromAddress,
+  getEncodedFillDescription,
+  getOrderKeyHashV3,
+} from "./utils";
 
 export async function handleVmOrder(
-  orderRequest: CatalystEvent<CatalystOrderData>,
-  ws: WebSocket,
+  orderRequest: CatalystEvent<CatalystOrder>,
 ) {
-  const { data } = orderRequest;
-  if (!data) {
-    console.error(`No data in ${orderRequest.event}`);
-    return;
-  }
-  const { order, signature } = data;
 
-  if (!order || !signature) {
-    console.error(`No order or signature in ${orderRequest.event}`);
-    return;
-  }
+  // Initially, we assue that orders only have a single output.
+  if (orderRequest.data.order.outputs.length != 1) throw new Error(`Got ${orderRequest.data.order.outputs.length} outputs instead of 1`);
+  const output = orderRequest.data.order.outputs[0];
 
-  await wait(Number(process.env.SLOWDOWN ?? 0));
+  // Check if solver supports the chains.
+  // TODO: check if solver supports both chains
+  const originChainId = orderRequest.data.order.originChainId;
+  const destinationChainId = output.chainId;
 
-  // TODO: some kind of evaluation of if the price is right.
+  // Get the contract of the filler.
+  // TODO: verify whether this is trusted.
+  const fillerAddress = getAddressFromBytes32(output.remoteFiller);
 
-  const transactionResponse = await initiateOrder(order, signature);
-  console.log({ hash: transactionResponse?.hash });
-
-  // const transactionReceipt = await transactionResponse.wait(2);
-  // FIXME: hash can be null
-  const transactionReceipt = await baseSigner.provider.waitForTransaction(
-    transactionResponse.hash,
-    2,
+  const fillerContract = new ethers.Contract(
+    fillerAddress,
+    CoinFillerAbi,
+    ethSigner,
   );
 
-  // Probably the better way to do this is to look for the initiate events
-  // Check if it was us and then fill. It is simpler to just check if the transaction went through.
-  if (transactionReceipt.status === 0) return;
+  // Get solver's address. The users paid input tokens will go to this address.
+  const solverIdentifier = getBytes32FromAddress(ethSigner.address);
 
-  // We need the actual orderKey. (The one provided in the call is just an estimate.)
-  const logs = transactionReceipt.logs;
-  // Get the orderInitiated event.
-  let orderKeyLog: Log;
-  for (const log of logs) {
-    if (log.address !== order.settlementContract) continue;
-    if (
-      log.topics[0] !==
-      "0x068f390a186ab224f3ad01f21c41b507b6c4e715dcfd2e640ce83b784071eb3f"
-    )
-      continue;
-    orderKeyLog = log; // TODO: Parse log.data.
-  }
-  if (orderKeyLog === undefined)
-    throw Error(
-      `Tx ${transactionResponse.hash} was initiated and status !== 0, but couldn't find OrderInitiated event in logs`,
-    );
-  const reactorInterface = BaseReactor__factory.createInterface();
-  const parsedLog = reactorInterface.decodeEventLog(
-    "OrderInitiated",
-    orderKeyLog.data,
+  // Get order identifier.
+  const orderIdentifier = getOrderKeyHashV3(
+    compactSettlerAddress[originChainId],
+    orderRequest.data.order,
   );
-  const orderKey = parsedLog.orderKey as OrderKey;
 
-  await fillOutputs(orderKey);
+  console.log({
+    fillerAddress,
+    solverIdentifier,
+    orderIdentifier,
+  });
 
-  // this is not necessary but recommended
-  ws.send(
-    JSON.stringify({
-      event: CatalystWsEventType.SOLVER_ORDER_INITIATED,
-      data: {
-        nonce: order.nonce.toString(),
-        swapper: order.swapper.toString(),
+  // approve coin filler to use usdc tokens
+  const usdcContract = new ethers.Contract(
+    usdcAddress[destinationChainId],
+    [
+      {
+        type: "function",
+        name: "approve",
+        inputs: [
+          { name: "spender", type: "address", internalType: "address" },
+          { name: "amount", type: "uint256", internalType: "uint256" },
+        ],
+        outputs: [{ name: "", type: "bool", internalType: "bool" }],
+        stateMutability: "nonpayable",
       },
-    }),
+    ],
+    ethSigner,
   );
+  console.log("approving...");
+  await usdcContract.approve(fillerAddress, output.amount);
+  console.log("filler approved");
+
+  console.log("filling...");
+  const filledTx = await fillerContract.fill(
+    orderIdentifier,
+    output,
+    solverIdentifier,
+  );
+  console.log("filled tx", filledTx);
+
+  const waitedFilledTx = (await filledTx.wait(1)) as TransactionReceipt;
+  console.log("waitedTx", waitedFilledTx);
+
+  const blockNumber = waitedFilledTx.blockNumber;
+  const ethBlock = await ethSigner.provider.getBlock(blockNumber);
+  const ethTxTimestamp = ethBlock.timestamp;
+  console.log({
+    ethBlock,
+    ethTxTimestamp,
+  });
+  if (!ethTxTimestamp) throw new Error("ethTxTimestamp is undefined");
+
+  const wormholeContract = new ethers.Contract(
+    whOracleAddress[destinationChainId],
+    WormholeOracleAbi,
+    ethSigner,
+  );
+  console.log("encoding bytes");
+  const fillDescriptionBytes = getEncodedFillDescription(
+    solverIdentifier,
+    orderIdentifier,
+    ethTxTimestamp,
+    output,
+  );
+  console.log("fillDescriptionBytes", fillDescriptionBytes);
+  console.log("submitting...");
+  const whTx = await wormholeContract.submit(fillerAddress, [
+    fillDescriptionBytes,
+  ]);
+  console.log("whTx", whTx);
+  const whTxAwaited = await whTx.wait(1);
+  console.log("whTxAwaited", whTxAwaited);
+  // console.log("fill tx", tx);
+  // const txReceipt = await provider.getTransactionReceipt(tx.hash);
+  // console.log("fill tx receipt", txReceipt);
+
+  const compactOrder = {
+    user: orderRequest.data.order.user,
+    nonce: orderRequest.data.order.nonce,
+    originChainId: orderRequest.data.order.originChainId,
+    fillDeadline: orderRequest.data.order.fillDeadline,
+    localOracle: orderRequest.data.order.localOracle,
+    inputs: orderRequest.data.order.inputs,
+    outputs: orderRequest.data.order.outputs,
+  };
+
+  const compactSettler = new ethers.Contract(
+    compactSettlerAddress[originChainId],
+    CompactSettlerAbi,
+    baseSigner,
+  );
+  console.log("finalizing...");
+  const finalizeTx = await compactSettler.finaliseSelf(
+    compactOrder,
+    abi.encode(
+      ["bytes", "bytes"],
+      [
+        orderRequest.data.sponsorSignature,
+        orderRequest.data.allocatorSignature,
+      ],
+    ),
+    // TODO: should be dynamic
+    [ethTxTimestamp],
+    // TODO: this should be correctly fetched
+    getBytes32FromAddress(baseSigner.address),
+  );
+  console.log("finalizeTx", finalizeTx);
+  const finalizeTxWaited = await finalizeTx.wait(1);
+  console.log("finalizeTxWaited", finalizeTxWaited);
+
+  console.log("order finalized");
+  return;
 }

@@ -1,11 +1,11 @@
 import { AbiCoder, ethers, keccak256, solidityPacked } from "ethers";
-import { CrossChainOrderV3, OutputDescription_v3 } from "src/types";
+import { CompactOrder, OutputDescription } from "src/types";
 
 export const abi = AbiCoder.defaultAbiCoder();
 
 export const getOrderKeyHashV3 = (
   compactSettlerAddress: string,
-  order: CrossChainOrderV3,
+  order: CompactOrder,
 ): string => {
   return keccak256(
     solidityPacked(
@@ -51,7 +51,7 @@ export const getEncodedFillDescription = (
   solver: string,
   orderId: string,
   timestamp: number,
-  output: OutputDescription_v3,
+  output: OutputDescription,
 ) => {
   console.log({
     solver,
