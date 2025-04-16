@@ -106,26 +106,11 @@ export interface QuoteContext {
   intermediary: string;
 }
 
-export interface CatalystOrderMeta {
-  submitTime: number;
-  orderIdentifier?: string;
-  orderStatus: string;
-  destinationAddress?: string;
-}
-
 export interface CatalystOrderData {
   order: CrossChainOrder;
   quote: QuoteContext;
   signature: string;
   meta: CatalystOrderMeta;
-}
-
-export interface CatalystOrderDataV3 {
-  order: CrossChainOrderV3;
-  quote: QuoteContext;
-  meta: CatalystOrderMeta;
-  sponsorSignature: string;
-  allocatorSignature: string;
 }
 
 export interface PaginationMeta {
@@ -137,4 +122,70 @@ export interface PaginationMeta {
 export interface GetOrdersResponse {
   data: CatalystOrderData[];
   pagination: PaginationMeta;
+}
+
+/**
+ * CATALYST V3
+ */
+
+export interface CatalystOrderMeta {
+  submitTime: number;
+  orderIdentifier?: string;
+  orderStatus?: string;
+  connectedWalletId?: string;
+  destinationAddress?: string;
+  originId?: string;
+  confirmationsCount?: number;
+  requiredConfirmationsCount?: number;
+  orderInitiatedTxHash?: string;
+  orderPurchasedTxHash?: string;
+  orderProvenTxHash?: string;
+  nonVmTxHash?: string;
+
+  signedAt?: Date;
+  initiatedAt?: Date;
+  pendingTransferAt?: Date;
+  settledTransferAt?: Date;
+  purchasedAt?: Date;
+  provenAt?: Date;
+  failedAt?: Date;
+  expiredAt?: Date;
+}
+
+export interface QuoteContext {
+  toAsset: string;
+  toPrice: string;
+  discount: string;
+  fromAsset: string;
+  fromPrice: string;
+  intermediary: string;
+}
+
+export interface OutputDescriptionV3 {
+  remoteOracle: string;
+  remoteFiller: string;
+  token: string;
+  amount: number;
+  recipient: string;
+  chainId: number;
+  remoteCall: string;
+  fulfillmentContext: string;
+}
+
+export interface CompactOrder {
+  user: string;
+  nonce: number;
+  originChainId: number;
+  fillDeadline: number;
+  localOracle: string;
+  inputs: [number, number][];
+  outputs: OutputDescriptionV3[];
+}
+
+export interface CatalystOrderV3 {
+  order: CompactOrder;
+  quotes: QuoteContext;
+  meta: CatalystOrderMeta;
+  sponsorSignature: string;
+  allocatorSignature: string;
 }

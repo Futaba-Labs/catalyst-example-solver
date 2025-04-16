@@ -4,13 +4,10 @@ import { RawData, WebSocket } from "ws";
 import { handleQuoteRequest } from "./handlers/quote-request.handler";
 import {
   CatalystEvent,
-  CatalystOrderData,
   CatalystOrderDataV3,
   CatalystQuoteRequestData,
 } from "./types";
 import { CatalystWsEventType } from "./types/events";
-// import { handleVmOrder } from "./handlers/vm-order.handler";
-import { handleNonVmOrder } from "./handlers/non-vm-order.handler";
 import { handleVmOrder } from "./handlers/v3/vm-order-v3.handler";
 
 @Controller()
@@ -44,17 +41,6 @@ export class AppController implements OnModuleInit {
           case CatalystWsEventType.PING:
             this.handleReceivePing();
             break;
-          case CatalystWsEventType.QUOTE_REQUEST_BINDING:
-            console.log(
-              `[${CatalystWsEventType.QUOTE_REQUEST_BINDING}]`,
-              parsedData,
-            );
-            // replace by a function that generates binding quotes
-            handleQuoteRequest(
-              parsedData as CatalystEvent<CatalystQuoteRequestData>,
-              this.ws,
-            );
-            break;
           case CatalystWsEventType.QUOTE_REQUEST:
             console.log(`[${CatalystWsEventType.QUOTE_REQUEST}]`, parsedData);
             handleQuoteRequest(
@@ -64,19 +50,7 @@ export class AppController implements OnModuleInit {
             break;
           case CatalystWsEventType.VM_ORDER:
             console.log(`[${CatalystWsEventType.VM_ORDER}]`, parsedData);
-            handleVmOrder(
-              parsedData as CatalystEvent<CatalystOrderDataV3>,
-              this.ws,
-            );
-            break;
-          // case CatalystWsEventType.NON_VM_ORDER:
-          //   console.log(`[${CatalystWsEventType.NON_VM_ORDER}]`, parsedData);
-          //   handleNonVmOrder(
-          //     parsedData as CatalystEvent<CatalystOrderData>,
-          //     this.ws,
-          //   );
-          //   break;
-          case CatalystWsEventType.ORDER_STATUS_CHANGE:
+            handleVmOrder(parsedData as CatalystEvent<CatalystOrderDataV3>);
             break;
           default:
             console.log("Unknown message type:", parsedData);

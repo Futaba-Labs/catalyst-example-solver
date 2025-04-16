@@ -1,6 +1,5 @@
-import { CatalystEvent, CatalystOrderDataV3 } from "src/types";
+import { CatalystEvent, CatalystOrderV3 } from "src/types";
 import { ethers, TransactionReceipt } from "ethers";
-import { WebSocket } from "ws";
 import { abi as CoinFillerAbi } from "../../../abi/CoinFiller.json";
 import { abi as WormholeOracleAbi } from "../../../abi/WormholeOracle.json";
 import { abi as CompactSettlerAbi } from "../../../abi/CompactSettler.json";
@@ -18,30 +17,15 @@ import {
   getOrderKeyHashV3,
 } from "./utils";
 
-// TODO: get this from the request
-const sponsorSig =
-  "0x23092378ccc2bc2cb33586f4620f1f44a41fc26b73e8e95356ff0d49418f040c69df82d3802593e5850efacd88ac751e2b93c63f2944bd284dba3a06b3b5787b1b";
-const ALWAYS_YES_ORACLE = "0xada1de62be4f386346453a5b6f005bcdbe4515a1";
-
 export async function handleVmOrder(
-  orderRequest: CatalystEvent<CatalystOrderDataV3>,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ws: WebSocket,
+  orderRequest: CatalystEvent<CatalystOrderV3>,
 ) {
-  console.dir(orderRequest, {
-    depth: 10,
-  });
-
   const output = orderRequest.data.order.outputs[0];
-  console.dir(
-    {
-      context: "output",
-      output,
-    },
-    {
-      depth: 10,
-    },
-  );
+
+  // TODO: check if solver supports both chains
+  const originChainId = orderRequest.data.order.originChainId;
+  const destinationChainId = output.chainId;
+
   const fillerAddress = getAddressFromBytes32(output.remoteFiller);
 
   const fillerContract = new ethers.Contract(
@@ -51,7 +35,7 @@ export async function handleVmOrder(
   );
   const solverIdentifier = getBytes32FromAddress(output.recipient);
   const orderIdentifier = getOrderKeyHashV3(
-    compactSettlerAddress[84532],
+    compactSettlerAddress[originChainId],
     orderRequest.data.order,
   );
   console.log({
@@ -62,7 +46,7 @@ export async function handleVmOrder(
 
   // approve coin filler to use usdc tokens
   const usdcContract = new ethers.Contract(
-    usdcAddress[11155111],
+    usdcAddress[destinationChainId],
     [
       {
         type: "function",
@@ -102,7 +86,7 @@ export async function handleVmOrder(
   if (!ethTxTimestamp) throw new Error("ethTxTimestamp is undefined");
 
   const wormholeContract = new ethers.Contract(
-    whOracleAddress[11155111],
+    whOracleAddress[destinationChainId],
     WormholeOracleAbi,
     ethSigner,
   );
@@ -129,20 +113,26 @@ export async function handleVmOrder(
     nonce: orderRequest.data.order.nonce,
     originChainId: orderRequest.data.order.originChainId,
     fillDeadline: orderRequest.data.order.fillDeadline,
-    localOracle: ALWAYS_YES_ORACLE,
+    localOracle: orderRequest.data.order.localOracle,
     inputs: orderRequest.data.order.inputs,
     outputs: orderRequest.data.order.outputs,
   };
 
   const compactSettler = new ethers.Contract(
-    compactSettlerAddress[84532],
+    compactSettlerAddress[originChainId],
     CompactSettlerAbi,
     baseSigner,
   );
   console.log("finalizing...");
   const finalizeTx = await compactSettler.finaliseSelf(
     compactOrder,
-    abi.encode(["bytes", "bytes"], [sponsorSig, "0x"]),
+    abi.encode(
+      ["bytes", "bytes"],
+      [
+        orderRequest.data.sponsorSignature,
+        orderRequest.data.allocatorSignature,
+      ],
+    ),
     // TODO: should be dynamic
     [ethTxTimestamp],
     // TODO: this should be correctly fetched
@@ -151,5 +141,7 @@ export async function handleVmOrder(
   console.log("finalizeTx", finalizeTx);
   const finalizeTxWaited = await finalizeTx.wait(1);
   console.log("finalizeTxWaited", finalizeTxWaited);
+
+  console.log("order finalized");
   return;
 }
