@@ -5,6 +5,7 @@
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
@@ -18,18 +19,10 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/config": [
-        "libs/config/src"
-      ],
-      "@app/config/*": [
-        "libs/config/src/*"
-      ],
-      "@app/logger": [
-        "libs/logger/src"
-      ],
-      "@app/logger/*": [
-        "libs/logger/src/*"
-      ]
+      "@app/config": ["libs/config/src"],
+      "@app/config/*": ["libs/config/src/*"],
+      "@app/logger": ["libs/logger/src"],
+      "@app/logger/*": ["libs/logger/src/*"]
     }
   }
 }

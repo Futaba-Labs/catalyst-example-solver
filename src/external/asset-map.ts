@@ -7,13 +7,13 @@ export const assetMap: Record<
   }
 > = {
   btc: {
-    coingecko: 'bitcoin',
-    binance: 'btc',
-    coinbase: 'btc',
+    coingecko: "bitcoin",
+    binance: "btc",
+    coinbase: "btc",
   },
   usdc: {
-    coingecko: 'usd-coin',
-    binance: 'usdc',
-    coinbase: 'usdc',
+    coingecko: "usd-coin",
+    binance: "usdc",
+    coinbase: "usdc",
   },
 };
