@@ -17,24 +17,24 @@ export interface InventoryItem {
 const inventory: InventoryItem[] = [
   {
     chainId: 11155111, // Ethereum
-    asset: "0xf08A50178dfcDe18524640EA6618a1f965821715", // USDC on Ethereum
+    asset: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // USDC on Ethereum
     fromPrice: "1000000", // price of token in USDC when sold to the solver
     toPrice: "1100000", // price of token in USDC when bought from the solver
     fromCost: "1000", // cost of token in USDC when sold to the solver
     toCost: "1000", // cost of token in USDC when bought from the solver
     maxAmount: 1000000000, // max the solver will handle
-    minAmount: 1000000, // optional minimum amount
+    minAmount: 100000, // optional minimum amount
     expiry: Date.now() + 5000, // 5 seconds from now
   },
   {
     chainId: 84532,
-    asset: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     fromPrice: "9900000", // price of token in USDC when sold to the solver
     toPrice: "1000000", // price of token in USDC when bought from the solver
     fromCost: "2000", // cost of token in USDC when sold to the solver
     toCost: "3000", // cost of token in USDC when bought from the solver
     maxAmount: 1000000000, // max the solver will handle
-    minAmount: 1000000, // optional minimum amount
+    minAmount: 100000, // optional minimum amount
     expiry: Date.now() + 5000, // 5 seconds from now
   },
 ];

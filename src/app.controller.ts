@@ -1,77 +1,112 @@
-import { Controller, OnModuleInit } from "@nestjs/common";
+import { Controller, OnModuleInit, Logger, Get } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { RawData, WebSocket } from "ws";
-import { CatalystEvent, CatalystOrder } from "./types";
-
-import { handleVmOrder } from "./handlers/vm-order.handler";
-import { CatalystWsEvent, CommonWsEvent } from "./types/events";
+import { OnchainOrderService } from "./services/onchain-order.service";
+import { OrderServerService } from "./services/order-server.service";
 
 @Controller()
 export class AppController implements OnModuleInit {
-  constructor(private config: ConfigService) {}
-  private ws: WebSocket;
-  private reconnectInterval = 5000; // Reconnect interval in milliseconds
+  private readonly logger = new Logger(AppController.name);
+
+  constructor(
+    private config: ConfigService,
+    private onchainOrderService: OnchainOrderService,
+    private orderServerService: OrderServerService,
+  ) {}
 
   async onModuleInit() {
-    await this.listenToOrderServer();
-  }
-
-  async listenToOrderServer() {
-    const wsUri = this.config.getOrThrow("ORDER_SERVER_WS_URI");
-    const apiKey = this.config.getOrThrow("ORDER_SERVER_API_KEY");
-
-    this.ws = new WebSocket(wsUri, {
-      headers: {
-        "x-api-key": apiKey,
-      },
-    });
-
-    this.ws.on("open", () => {
-      console.log("Connected to WebSocket server");
-    });
-
-    this.ws.on("message", (data: RawData) => {
-      try {
-        const parsedData: CatalystEvent<unknown> = JSON.parse(data.toString());
-        switch (parsedData.event) {
-          case CommonWsEvent.PING:
-            this.handleReceivePing();
-            break;
-          case CatalystWsEvent.USER_ORDER_VM:
-            console.log(`[${CatalystWsEvent.USER_ORDER_VM}]`, parsedData);
-            handleVmOrder(parsedData as CatalystEvent<CatalystOrder>);
-            break;
-          default:
-            console.log("Unknown message type:", parsedData);
-        }
-      } catch (error) {
-        console.error("Error parsing JSON:", error);
-      }
-    });
-
-    this.ws.on("error", (error: Error) => {
-      console.error("WebSocket error:", error);
-    });
-
-    this.ws.on("close", async () => {
-      console.error("Disconnected from WebSocket");
-      await this.reconnect();
-    });
-  }
-
-  async reconnect() {
-    console.log("Attempting to reconnect...");
-    setTimeout(async () => {
-      this.ws.close();
-      await this.listenToOrderServer();
-    }, this.reconnectInterval);
-  }
-
-  async handleReceivePing() {
-    this.ws.send(
-      JSON.stringify({
-        event: CommonWsEvent.PONG,
-      }),
+    this.logger.log("Starting Catalyst v1 Solver...");
+    this.logger.log("✅ Order server API integration initialized");
+    this.logger.log("✅ Multi-chain support enabled for new testnets");
+    this.logger.log(
+      "ℹ️  On-chain order polling is DISABLED (manual start required)",
     );
+  }
+
+  @Get("/status")
+  async getStatus() {
+    const wsConnectionStatus = this.orderServerService.getConnectionStatus();
+
+    // Get order statistics if available
+    const orderStats = await this.orderServerService.getOrderStats();
+    const serverInfo = await this.orderServerService.getServerInfo();
+
+    return {
+      status: "running",
+      version: "catalyst-v1",
+      services: {
+        onchainPolling: false,
+        websocketConnection: wsConnectionStatus,
+      },
+      features: {
+        multiChain: true,
+        standardOrders: true,
+        batchCompact: true,
+        legacySupport: true,
+        pingPongSupport: true,
+      },
+      supportedChains: [11155111, 84532, 11155420, 421614],
+      orderServer: {
+        websocketStatus: wsConnectionStatus,
+        statistics: orderStats,
+        serverInfo: serverInfo,
+      },
+      notes: {
+        onchainPolling: "Disabled - use GET /start-onchain-polling to enable",
+        websocket: `Connection status: ${wsConnectionStatus}`,
+        orderStats: orderStats
+          ? `Total: ${orderStats.total}, Pending: ${orderStats.pending}, Open: ${orderStats.open}`
+          : "Statistics not available",
+      },
+    };
+  }
+
+  @Get("/start-onchain-polling")
+  async startOnchainPolling() {
+    try {
+      await this.onchainOrderService.startPolling();
+      return {
+        success: true,
+        message: "On-chain order polling started",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to start on-chain polling",
+        error: error.message,
+      };
+    }
+  }
+
+  @Get("/stop-onchain-polling")
+  async stopOnchainPolling() {
+    try {
+      this.onchainOrderService.stopPolling();
+      return {
+        success: true,
+        message: "On-chain order polling stopped",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to stop on-chain polling",
+        error: error.message,
+      };
+    }
+  }
+
+  // WebSocket ping test endpoint
+  @Get("/ping-websocket")
+  async pingWebSocket() {
+    const success = this.orderServerService.sendPing();
+    const status = this.orderServerService.getConnectionStatus();
+
+    return {
+      success,
+      connectionStatus: status,
+      message: success
+        ? "Ping sent successfully"
+        : "Failed to send ping - WebSocket not connected",
+      timestamp: new Date().toISOString(),
+    };
   }
 }
