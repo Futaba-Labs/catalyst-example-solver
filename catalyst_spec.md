@@ -1234,7 +1234,6 @@ function isValidOrder(orderData) {
          orderData.order.fillDeadline > Date.now() / 1000;
 }
 ```
-```
 
 ### Key Best Practices for Catalyst Solvers
 
